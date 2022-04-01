@@ -34,6 +34,17 @@ def mismatch_check(a,b,n=3):
     passed = n > mismatches
     return(passed)
 
-def pairwise_mismatch_check(df):
-    pass
-    
+def mismatch_vector(a,series_b):
+    mismatches = series_b.apply(lambda x : get_mismatches(a,x))
+    return(mismatches)
+
+def pairwise_mismatch_check(series_a,series_b):
+    mismatches = series_a.apply(lambda x : mismatch_vector(x,series_b))
+    return(mismatches)
+
+#debug utils
+def fetch_ib():
+    out = pd.read_csv("illumina_barcodes.txt",sep="\t")
+    return(out)
+ 
+
