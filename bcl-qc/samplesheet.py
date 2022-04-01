@@ -9,7 +9,6 @@ def check_barcodes():
     """
     pass
 
-
 # utilities for identifying barcode similarity/collision
 def reverse_complement(index):
     rc = Seq(index).reverse_complement()
@@ -50,5 +49,26 @@ def pairwise_mismatch_check(series_a,series_b):
 def fetch_ib():
     out = pd.read_csv("illumina_barcodes.txt",sep="\t")
     return(out)
- 
 
+def combined_barcode(df):
+    out = df["index"] + df["index2"]
+    return(out)
+
+def add_combined_barcode(df):
+    df["combined"] = combined_barcode(df) 
+    return(df)
+
+def ib():
+    out = fetch_ib()
+    out = add_combined_barcode(df)
+    return(out)
+
+def archer():
+    out = ib()
+    out = out[out.Plate_ID.str.contains("FusionPlex")]
+    return(out)
+
+def twist():
+    out = ib()
+    out = out[out.Plate_ID.str.contains("Twist")]
+    return(out)
