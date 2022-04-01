@@ -36,10 +36,14 @@ def mismatch_check(a,b,n=3):
 
 def mismatch_vector(a,series_b):
     mismatches = series_b.apply(lambda x : get_mismatches(a,x))
+    mismatches = pd.Series(mismatches)
+    mismatches.index = series_b
+    mismatches.name = a
     return(mismatches)
 
 def pairwise_mismatch_check(series_a,series_b):
     mismatches = series_a.apply(lambda x : mismatch_vector(x,series_b))
+    mismatches.index = mismatches.columns
     return(mismatches)
 
 #debug utils
