@@ -60,7 +60,7 @@ def add_combined_barcode(df):
 
 def ib():
     out = fetch_ib()
-    out = add_combined_barcode(df)
+    out = add_combined_barcode(out)
     return(out)
 
 def archer():
