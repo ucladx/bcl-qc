@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import pandas as pd 
 from Bio.Seq import Seq
 from skbio.sequence import DNA
@@ -72,3 +73,15 @@ def twist():
     out = ib()
     out = out[out.Plate_ID.str.contains("Twist")]
     return(out)
+
+def main():
+    a = archer()
+    t = twist()
+    amm = pairwise_mismatch_check(a.combined,a.combined)
+    tmm = pairwise_mismatch_check(t.combined,t.combined)
+    amm.to_csv("archer_mms.txt")
+    tmm.to_csv("twist_mms.txt")
+
+#dump mismatch stats 
+if __name__ == "__main__":
+    main()
