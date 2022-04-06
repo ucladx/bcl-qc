@@ -43,7 +43,8 @@ def mismatch_vector(a,series_b):
 
 def pairwise_mismatch_check(series_a,series_b):
     mismatches = series_a.apply(lambda x : mismatch_vector(x,series_b))
-    mismatches.index = mismatches.columns
+    mismatches.index = series_a.index
+    #mismatches.index = mismatches.columns
     return(mismatches)
 
 #debug utils
