@@ -1,9 +1,8 @@
-## `bcl-qc` - Tools to demux and QC data in BCL format
-
-### Get started
+## Quick start
 
 ```bash
 git clone git@github.com:ucladx/bcl-qc.git
 cd bcl-qc
 pip install .
 ```
+::TODO:: Put this in PyPI instead
