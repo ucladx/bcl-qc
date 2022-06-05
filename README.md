@@ -12,9 +12,9 @@ For an NGS lab like ours with few engineers - the less infrastructure we build, 
 - Develop scripts to orchestrate use of [Microsoft's Azure](https://azuremarketplace.microsoft.com/en-us/marketplace/apps/illuminainc1586452220102.public-dragen-batch) and [Illumina's Dragen](https://www.illumina.com/products/by-type/informatics-products/dragen-bio-it-platform.html) for storage/compute.
 - Deploy a minimal BCL to VCF pipeline to generate run and sample-level metrics for quality control.
 
-### Workstation
+### Server
 
-[Click here](dx-ngs.md) to see how we set up our primary server. These instructions are targeted at sysadmins or DevOps engineers, but if you are a quick study and armed with Google, you'll do fine too. Versioned documentation like this helps to quickly replace the primary server in case of failure. Later, we should use configuration management tools like [Ansible](https://en.wikipedia.org/wiki/Ansible_(software)) - there's more upfront effort to generalize the configuration, but the reward is more fault tolerance.
+[Click here](dx-hpc.md) to see how we set up our primary server. These instructions are written for sysadmins or DevOps engineers, but if you are a quick study and armed with Google, you'll do fine too. Detailed and versioned instructions like these helps to quickly replace the primary server in case of failure. Later, we should use configuration management tools like [Ansible](https://en.wikipedia.org/wiki/Ansible_(software)) to automate deployment of new servers for fault tolerance or load balancing.
 
 ### Quick start
 

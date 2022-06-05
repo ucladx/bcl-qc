@@ -3,15 +3,14 @@
 Acquired a [Dell Precision 3640](https://www.dell.com/en-us/work/shop/desktops-all-in-one-pcs/precision-3640-tower-workstation/spd/precision-3640-workstation) tower workstation with the following specs:
 
 - Intel Xeon W-1290P (best [single-thread performance](https://www.cpubenchmark.net/singleThread.html#server-thread) in early 2021)
-- 128GB DDR4-2666 ECC Memory (minimum of 64GB recommended for NGS workloads)
-- 1x 960GB Intel Optane 905P PCIe NVMe SSD (best latency decent bandwidth)
+- 128GB DDR4-2666 ECC Memory (64GB minimum; ECC prevents genomic data corruption)
 - 2x 512GB Toshiba Kioxia XG6 PCIe NVMe SSD (decent latency best bandwidth)
 - 2x 8TB 7200rpm SATA 3.5" HDD (poor latency and bandwidth, but best capacity)
 
-1. On a Windows PC, download the [Ubuntu Desktop 20.04.4 ISO](https://mirrors.ocf.berkeley.edu/ubuntu-releases/20.04.4) image.
+1. On a Windows PC, download the [Ubuntu Desktop 22.04 ISO](https://mirrors.ocf.berkeley.edu/ubuntu-releases/22.04) image.
 2. Follow [these instructions](https://ubuntu.com/tutorials/create-a-usb-stick-on-windows) to create a bootable USB stick.
 3. Boot into BIOS on the new workstation (press F2 during Dell logo), and ensure that:
-    - `SATA Operation` is set to AHCI (disables hardware RAID aka Intel RST)
+    - `SATA Operation` is set to AHCI (disables hardware RAID)
     - `Secure Boot` is enabled (works with Ubuntu for now)
     - `AC Recovery` is set to `Last Power State`
     - `POST Behaviour` is set to `Continue on Warnings` and `Keyboard Error Detection` is disabled
@@ -20,8 +19,7 @@ Acquired a [Dell Precision 3640](https://www.dell.com/en-us/work/shop/desktops-a
 5. Choose to `Install Ubuntu` and select `Minimal installation` when prompted.
 6. Under `Installation Type` choose `Something else`, and partition the SSDs as follows:
     - 512GB SSD: Two partitions, 128MB for EFI and remainder `ext4` mounted as `/`
-    - 512GB SSD: One partition, `ext4` mounted as `/tmp`
-    - 960GB SSD: One partition, `ext4` mounted as `/srv`
+    - 512GB SSD: One partition, `ext4` mounted as `/srv`
     - Make sure the boot loader is installed on the first SSD (nvme0n1)
 7. Follow on-screen instructions for remaining steps until reboot (hostname set to `dx-hpc`).
 8. After booting into the installed OS, start Terminal and install the following:
@@ -87,14 +85,14 @@ Acquired a [Dell Precision 3640](https://www.dell.com/en-us/work/shop/desktops-a
     ```json
     [
         {
-            "path": "/hot/runs/hiseq",
+            "path": "/hot/runs/miseq",
             "platformType": "ILLUMINA",
             "name": "default",
             "timeZone": "America/Los_Angeles",
             "parameters": {}
         },
         {
-            "path": "/hot/runs/other",
+            "path": "/hot/runs/novaseq",
             "platformType": "ILLUMINA",
             "name": "default",
             "timeZone": "America/Los_Angeles",
@@ -118,7 +116,7 @@ Acquired a [Dell Precision 3640](https://www.dell.com/en-us/work/shop/desktops-a
 
 1. Install mamba (fast conda replacement that uses conda-forge as default channel):
     ```bash
-    curl -L https://github.com/conda-forge/miniforge/releases/download/4.11.0-4/Mambaforge-Linux-x86_64.sh -o /tmp/mambaforge.sh
+    curl -L https://github.com/conda-forge/miniforge/releases/download/4.12.0-2/Mambaforge-Linux-x86_64.sh -o /tmp/mambaforge.sh
     sh /tmp/mambaforge.sh -bfp $HOME/mambaforge && rm -f /tmp/mambaforge.sh
     ```
 2. Add the following lines into your `.bashrc` file, then logout and login to load it:
@@ -129,7 +127,8 @@ Acquired a [Dell Precision 3640](https://www.dell.com/en-us/work/shop/desktops-a
         conda activate
     fi
     ```
-3. Install some basic utilities in the base conda environment:
+3. Create two conda environments, one with basic bioinformatics tools, and the other for interaction with AWS/DNAnexus:
     ```bash
-    mamba install -y git==2.35.1 gnupg==2.3.3
+    mamba create -n bio -c bioconda htslib samtools bcftools bedtools ucsc-liftover
+    mamba create -n aws -c bioconda dxpy aws-okta-keyman awscli
     ```
