@@ -1,26 +1,32 @@
+### Purpose
+
+A server to monitor sequencer run status and host a GUI for run-level QA and variant interpretation.
+
 ### Hardware and OS
 
-Acquired a [Dell Precision 3640](https://www.dell.com/en-us/work/shop/desktops-all-in-one-pcs/precision-3640-tower-workstation/spd/precision-3640-workstation) tower workstation with the following specs:
+Acquired a [Dell Precision 3640](https://www.dell.com/en-us/work/shop/desktops-all-in-one-pcs/precision-3640-tower-workstation/spd/precision-3640-workstation) tower workstation in early 2021 with the following specs.
 
-- Intel Xeon W-1290P (best [single-thread performance](https://www.cpubenchmark.net/singleThread.html#server-thread) in early 2021)
-- 128GB DDR4-2666 ECC Memory (64GB minimum; ECC reduces odds of data corruption)
+- Intel Xeon W-1290P (support for ECC memory; best single-thread performance)
+- 128GB DDR4-2666 ECC Memory (ECC reduces odds of data corruption)
 - 2x 512GB Toshiba Kioxia XG6 PCIe NVMe SSD (nvme0n1, nvme1n1)
 - 2x 8TB 7200rpm SATA 3.5" HDD (sda, sdb)
 
+We'll choose to install Ubuntu 20.04 for backward compatibility and for security updates supported till 2025.
+
 1. On a Windows PC, download the [Ubuntu Desktop 20.04.4 ISO](https://mirrors.ocf.berkeley.edu/ubuntu-releases/20.04.4) image.
-2. Follow [these instructions](https://ubuntu.com/tutorials/create-a-usb-stick-on-windows) to create a bootable USB stick.
-3. Boot into BIOS on the new workstation (press F2 during Dell logo), and ensure that:
+2. Boot into BIOS on the server (press F2 during Dell logo), and ensure that:
     - `SATA Operation` is set to AHCI (disables hardware RAID)
     - `Secure Boot` is enabled (works with Ubuntu for now)
     - `AC Recovery` is set to `Last Power State`
     - `POST Behaviour` is set to `Continue on Warnings` and `Keyboard Error Detection` is disabled
     - `Virtualization`, `VT for Direct I/O`, and `Trusted Execution` are enabled
+3. Follow [these instructions](https://ubuntu.com/tutorials/create-a-usb-stick-on-windows) to create a bootable USB stick.
 4. Plug in the USB stick and boot into it (press F12 during Dell logo).
 5. Choose to `Install Ubuntu` and select `Minimal installation` when prompted.
 6. Under `Installation Type` choose `Something else`, and partition the first SSD (nvme0n1) as follows:
     - Two partitions, 128MB for EFI and remainder `ext4` mounted as `/`
     - Make sure the boot loader is installed on this SSD (nvme0n1)
-7. Follow on-screen instructions for remaining steps until reboot (hostname set to `dx-var`).
+7. Follow on-screen instructions for remaining steps (includes setting a hostname) until reboot.
 8. After booting into the installed OS, start Terminal and install the following:
     ```bash
     sudo apt update
@@ -168,4 +174,3 @@ Since we set up `/hot` as network-attached storage (NAS) on the server, we can c
     cd /opt/VarSeq-2.2.5
     ln -s /hot/varseq AppData
     ```
-3. Start VarSeq

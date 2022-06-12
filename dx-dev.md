@@ -1,27 +1,33 @@
+### Purpose
+
+A server with sufficient compute and storage for local development, so that we don't need to touch any resources in production.
+
 ### Hardware and OS
 
-Acquired a [Dell Precision 5820](https://www.dell.com/en-us/work/shop/desktops-all-in-one-pcs/precision-5820-tower-workstation/spd/precision-5820-workstation) tower workstation with the following specs:
+Acquired a [Dell Precision 5820](https://www.dell.com/en-us/work/shop/desktops-all-in-one-pcs/precision-5820-tower-workstation/spd/precision-5820-workstation) tower workstation in mid 2018 with the following specs.
 
-- Intel Xeon W-2145
-- 200GB DDR4-2666 ECC Memory
-- 1x 1TB Samsung SSD 960 EVO PCIe NVMe SSD (nvme0n1)
+- Intel Xeon W-2145 (support for ECC memory and AVX-512; decent single-thread performance)
+- 200GB DDR4-2666 ECC Memory (ECC reduces odds of data corruption)
+- 1x 1TB Samsung 960 EVO PCIe NVMe SSD (nvme0n1)
 - 1x 2TB Micron 3400 PCIe NVMe SSD (nvme1n1)
 - 2x 16TB 7200rpm SATA 3.5" HDD (sda, sdb)
 
-1. On a Windows PC, download the [Ubuntu Desktop 20.04.4 ISO](https://mirrors.ocf.berkeley.edu/ubuntu-releases/20.04.4) image.
-2. Follow [these instructions](https://ubuntu.com/tutorials/create-a-usb-stick-on-windows) to create a bootable USB stick.
-3. Boot into BIOS on the new workstation (press F2 during Dell logo), and ensure that:
+We'll choose to install Ubuntu 22.04 for the newer kernel and for security updates supported till 2027.
+
+1. On a Windows PC, download the [Ubuntu Desktop 22.04 ISO](https://mirrors.ocf.berkeley.edu/ubuntu-releases/22.04) image.
+2. Boot into BIOS on the server (press F2 during Dell logo), and ensure that:
     - `SATA Operation` is set to AHCI (disables hardware RAID)
     - `Secure Boot` is enabled (works with Ubuntu for now)
     - `AC Recovery` is set to `Last Power State`
     - `POST Behaviour` is set to `Continue on Warnings` and `Keyboard Error Detection` is disabled
     - `Virtualization`, `VT for Direct I/O`, and `Trusted Execution` are enabled
+3. Follow [these instructions](https://ubuntu.com/tutorials/create-a-usb-stick-on-windows) to create a bootable USB stick.
 4. Plug in the USB stick and boot into it (press F12 during Dell logo).
 5. Choose to `Install Ubuntu` and select `Minimal installation` when prompted.
 6. Under `Installation Type` choose `Something else`, and partition the first SSD (nvme0n1) as follows:
     - Two partitions, 128MB for EFI and remainder `ext4` mounted as `/`
     - Make sure the boot loader is installed on this SSD (nvme0n1)
-7. Follow on-screen instructions for remaining steps until reboot (hostname set to `dx-var`).
+7. Follow on-screen instructions for remaining steps (includes setting a hostname) until reboot.
 8. After booting into the installed OS, start Terminal and install the following:
     ```bash
     sudo apt update
