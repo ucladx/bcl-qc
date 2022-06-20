@@ -96,6 +96,6 @@ We'll choose to install Ubuntu 22.04 for the newer kernel and for security updat
     ```
 3. Create two conda environments, one with basic bioinformatics tools, and the other for interaction with AWS/DNAnexus:
     ```bash
-    mamba create -yn bio -c bioconda htslib samtools bcftools bedtools ucsc-liftover
-    mamba create -yn aws -c bioconda dxpy aws-okta-keyman awscli
+    mamba create -yn bio -c bioconda htslib samtools bcftools bedtools ucsc-liftover jupyter-dash pandas nbformat python-kaleido
+    mamba create -yn aws -c bioconda awscli aws-okta-keyman dxpy
     ```
