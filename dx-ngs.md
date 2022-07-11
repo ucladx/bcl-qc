@@ -1,14 +1,14 @@
 ### Purpose
 
-A proof-of-concept server to perform primary and secondary NGS analyses with reasonable TAT and a USD $2500 budget.
+A proof-of-concept high-performance server for primary and secondary NGS analyses with reasonable TAT and a USD $3000 budget.
 
 ### Hardware and OS
 
 Acquired a [Dell XPS 8950](https://www.dell.com/en-us/work/shop/desktops-all-in-one-pcs/xps-desktop/spd/xps-8950-desktop) tower desktop in mid 2022 with the following specs. To support ECC memory, we could have gotten a [Dell Precision 3660](https://www.dell.com/en-us/work/shop/desktops-all-in-one-pcs/precision-3660-tower-workstation/spd/precision-3660-workstation), but that goes over budget.
 
 - Intel Core i9-12900K (best single-thread performance; added liquid cooling option)
-- 64GB DDR5-4400 Memory
-- 1x 960GB Intel Optane 905P PCIe NVMe SSD (nvme2n1)
+- 64GB DDR5-4400 Memory (sufficient for most NGS algorithms, except maybe de novo assembly)
+- 1x 960GB Intel Optane 905P PCIe NVMe SSD (nvme2n1) (overkill for a boot disk; regular SSD is fine)
 - 2x 2TB Samsung 980 Pro PCIe NVMe SSD (nvme0n1, nvme1n1)
 
 We'll choose to install Clear Linux for the latest kernel optimized for performance on Intel CPUs.
@@ -28,7 +28,8 @@ We'll choose to install Clear Linux for the latest kernel optimized for performa
 8. After booting into the installed OS, start Terminal and install the following:
     ```bash
     sudo swupd update
-    sudo swupd bundle-add -y openssh-server storage-utils iptables clr-network-troubleshooter
+    sudo swupd bundle-add -y openssh-server storage-utils clr-network-troubleshooter
+    sudo systemctl enable --now sshd.socket
     ```
 9. Create a unix group for your team (E.g. `dx` below) and make it your primary group:
     ```bash
@@ -53,16 +54,3 @@ We'll choose to install Clear Linux for the latest kernel optimized for performa
     sudo systemctl enable --now nmb
     ```
 12. Set a samba password for your username using `sudo smbpasswd -a $USER`
-13. Enable the firewall after allowing OpenSSH, NetBIOS, Samba, ICMP, localhost, and all server initiated connections:
-    ```bash
-    sudo iptables -A INPUT -p tcp -m multiport --dports 22,139,445 -j ACCEPT
-    sudo iptables -A INPUT -p icmp -j ACCEPT
-    sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-    sudo iptables -A INPUT -i lo -j ACCEPT
-    sudo iptables -A OUTPUT -o lo -j ACCEPT
-    sudo iptables -P OUTPUT ACCEPT
-    sudo iptables -P INPUT DROP
-    sudo iptables -P FORWARD DROP
-    sudo systemctl start iptables-save
-    sudo systemctl enable iptables-restore
-    ```

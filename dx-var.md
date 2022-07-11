@@ -51,10 +51,11 @@ We'll choose to install Ubuntu 20.04 for backward compatibility and for security
     sudo service smbd restart
     ```
 12. Set a samba password for your username using `sudo smbpasswd -a $USER`
-13. Allow OpenSSH/Samba connections through the firewall and then enable it:
+13. Allow OpenSSH/Samba/Web connections through the firewall and then enable it:
     ```bash
     sudo ufw allow OpenSSH
     sudo ufw allow Samba
+    sudo ufw allow 'Nginx Full'
     sudo ufw enable
     ```
 
@@ -162,7 +163,7 @@ Since we set up `/hot` as network-attached storage (NAS) on the server, we can c
 
 1. Download the version of VarSeq we want to deploy, and install it:
     ```bash
-    sudo mkdir /opt/VarSeq-2.2.5
+    sudo mkdir -m 775 /opt/VarSeq-2.2.5
     sudo chown $USER:dx /opt/VarSeq-2.2.5
     curl -L https://www.goldenhelix.com/download/VarSeq/VarSeq-Lin64-2.2.5.tar.gz -o /opt/VarSeq-2.2.5/VarSeq-Lin64-2.2.5.tar.gz
     tar -zxf /opt/VarSeq-2.2.5/VarSeq-Lin64-2.2.5.tar.gz -C /opt/VarSeq-2.2.5 --strip-components 1
@@ -173,4 +174,25 @@ Since we set up `/hot` as network-attached storage (NAS) on the server, we can c
     chmod 775 /hot/varseq
     cd /opt/VarSeq-2.2.5
     ln -s /hot/varseq AppData
+    ```
+3. Create a system user named `vsw-user` and use it to download VSWarehouse:
+    ```bash
+    sudo adduser --system --ingroup dx vsw-user
+    sudo usermod -a -G sudo vsw-user
+    sudo mkdir -m 775 /opt/VSWarehouse-1.3.22
+    sudo chown vsw-user:dx /opt/VSWarehouse-1.3.22
+    sudo -u vsw-user -s /bin/bash
+    git clone --branch v1.3.22 --recursive https://goldenhelix.kilnhg.com/Code/Public/Warehouse/vswarehouse.git /opt/VSWarehouse-1.3.22
+    ```
+4. Configure and install VSWarehouse per [instructions here](https://doc.goldenhelix.com/VSW/README/):
+    ```bash
+    cd /opt/VSWarehouse-1.3.22
+    ./install_setup_warehouse_ini.sh
+    sudo ./install_dependencies.sh
+    ./install_create_db.sh
+    ./install.sh
+    sudo ./install_services.sh
+    ./install_jenkins_cli.sh
+    vsapp/vspipeline -c download_annotations reference GRCh37
+    vsapp/vspipeline -c download_annotations reference GRCh38
     ```
