@@ -75,7 +75,7 @@ def save_occ_pf_plot(df, run_dir: str):
         plt.ylim([0, 100])
         plt.legend(title=hue, bbox_to_anchor=[1.2, 0.9])
         plt.tight_layout()
-        plt.savefig(run_dir, "occupancy" + f"_{hue.lower()}_mcq.jpg", dpi=600)
+        plt.savefig(run_dir, "/occupancy" + f"_{hue.lower()}_mcq.jpg", dpi=600)
         plt.close()
 
 
@@ -95,7 +95,7 @@ def demux(run_dir: str):
            "-a",
            "-F'\\t'",
            "-ne",
-           "'BEGIN{%m=map{@c=split(\"\\t\"); (\"$c[0] $c[2]\", \"$c[3],$c[4]\")}`cat ~/src/bcl-qc/bcl-qc/illumina_barcodes.txt`} chomp($F[1]); print join(\",\",$F[0],$m{$F[1]})'",
+           "'BEGIN{%m=map{@c=split(\"\\t\"); (\"$c[0] $c[2]\", \"$c[3],$c[4]\")}`cat ~/illumina_barcodes.txt`} chomp($F[1]); print join(\",\",$F[0],$m{$F[1]})'",
            "sample_index_map.txt"])
     Popen(["rsync",
            "-rhlW",
@@ -113,6 +113,7 @@ def demux(run_dir: str):
 
 # TODO comments from readme
 def align(run_dir: str):
+    run_dir = run_dir[1:] # strip leading '/'
     BED = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
     fastq_list = f"/staging/hot/reads/{run_dir}/I10/Reports/fastq_list.csv"
     bams_dir = f"/mnt/pns/bams/{run_dir}/{{}}"
@@ -147,6 +148,7 @@ def align(run_dir: str):
                     ,stdin=sort2.stdout)
 
 def multiqc_report(run_dir: str):
+    run_dir = run_dir[1:] # strip leading '/'
     Popen(["rm", "-f", f"/mnt/pns/bams/{run_dir}/*/*.wgs_*.csv"])
     Popen(["multiqc",
            f"--outdir /mnt/pns/bams/{rundir}",
