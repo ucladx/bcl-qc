@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import sys
-from subprocess import Popen, PIPE
+from subprocess import run, PIPE
 from numpy import zeros, float32
 from pandas import DataFrame
 from seaborn import scatterplot
@@ -96,14 +96,8 @@ def dir_from_path(path: str):
 
 # TODO comments from readme
 def demux(run_path: str):
-    run_dir = dir_from_path(run_path) 
-    Popen(["perl",
-           "-a",
-           "-F'\\t'",
-           "-ne",
-           "'BEGIN{%m=map{@c=split(\"\\t\"); (\"$c[0] $c[2]\", \"$c[3],$c[4]\")}`cat ~/illumina_barcodes.txt`} chomp($F[1]); print join(\",\",$F[0],$m{$F[1]})'",
-           "sample_index_map.txt"])
-    Popen(["rsync",
+    run_dir = dir_from_path(run_path)
+    run(["rsync",
            "-r",
            "-h",
            "-l",
@@ -112,9 +106,9 @@ def demux(run_path: str):
            "--exclude='Thumbnail_Images'",
            f"/mnt/pns/runs/{run_dir}/",
            f"/staging/hot/{run_dir}/"])
-    Popen(["mkdir",
+    run(["mkdir",
            f"/staging/hot/reads/{run_dir}"])
-    Popen(["dragen",
+    run(["dragen",
            "--bcl-conversion-only true",
            "--bcl-use-hw false",
            "--bcl-only-matched-reads true",
@@ -129,15 +123,15 @@ def align(run_path: str):
     fastq_list = f"/staging/hot/reads/{run_dir}/I10/Reports/fastq_list.csv"
     bams_dir = f"/mnt/pns/bams/{run_dir}/{{}}"
 
-    cut1 = Popen(["cut", "-f2", "--delimiter=,", fastq_list], stdout=PIPE)
-    grep1 = Popen(["grep", "-Ev", "^RGSM"], stdin=cut1.stdout, stdout=PIPE)
-    sort1 = Popen(["sort", "-u"], stdin=grep1.stdout, stdout=PIPE)
-    xargs1 = Popen(["xargs", "-L1", "-I{}", f"mkdir -p {bams_dir}"], stdin=sort1.stdout)
+    cut1 = run(["cut", "-f2", "--delimiter=,", fastq_list], stdout=PIPE)
+    grep1 = run(["grep", "-Ev", "^RGSM"], stdin=cut1.stdout, stdout=PIPE)
+    sort1 = run(["sort", "-u"], stdin=grep1.stdout, stdout=PIPE)
+    xargs1 = run(["xargs", "-L1", "-I{}", f"mkdir -p {bams_dir}"], stdin=sort1.stdout)
 
-    cut2 = Popen(["cut", "-f2", "--delimiter=,", fastq_list], stdout=PIPE)
-    grep2 = Popen(["grep", "-Ev", "^RGSM"], stdin=cut2.stdout, stdout=PIPE)
-    sort2 = Popen(["sort", "-u"], stdin=grep2.stdout, stdout=PIPE)
-    xargs2 = Popen(["xargs", "-L1", "-I{}",
+    cut2 = run(["cut", "-f2", "--delimiter=,", fastq_list], stdout=PIPE)
+    grep2 = run(["grep", "-Ev", "^RGSM"], stdin=cut2.stdout, stdout=PIPE)
+    sort2 = run(["sort", "-u"], stdin=grep2.stdout, stdout=PIPE)
+    xargs2 = run(["xargs", "-L1", "-I{}",
                     ("dragen --intermediate-results-dir /staging/tmp"
                             "--enable-map-align true"
                             "--enable-map-align-output true"
@@ -160,8 +154,8 @@ def align(run_path: str):
 
 def multiqc_report(run_path: str):
     run_dir = dir_from_path(run_path)
-    Popen(["rm", "-f", f"/mnt/pns/bams/{run_dir}/*/*.wgs_*.csv"])
-    Popen(["multiqc",
+    run(["rm", "-f", f"/mnt/pns/bams/{run_dir}/*/*.wgs_*.csv"])
+    run(["multiqc",
            f"--outdir /mnt/pns/bams/{run_dir}/",
            f"/mnt/pns/bams/{run_dir}",
            f"/staging/hot/reads/{run_dir}/I10"])
