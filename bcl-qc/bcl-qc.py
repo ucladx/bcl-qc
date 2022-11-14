@@ -75,6 +75,7 @@ def save_occ_pf_plot(df, run_path: str):
         plt.ylim([0, 100])
         plt.legend(title=hue, bbox_to_anchor=[1.2, 0.9])
         plt.tight_layout()
+        print("saving occ pf graph")
         plt.savefig(run_path + "occupancy" + f"_{hue.lower()}_mcq.jpg", dpi=600)
         plt.close()
 
@@ -93,72 +94,78 @@ def dir_from_path(path: str):
     # strip everything but dir name
     return [x for x in path.split('/') if x][-1]
 
-
 # TODO comments from readme
 def demux(run_path: str):
     run_dir = dir_from_path(run_path)
-    run(["rsync",
-           "-r",
-           "-h",
-           "-l",
-           "-W",
-           "--info=progress2",
-           "--exclude='Thumbnail_Images'",
-           f"/mnt/pns/runs/{run_dir}/",
-           f"/staging/hot/{run_dir}/"])
+    # print(f"copying {run_dir} to staging")
+    # run(["rsync",
+    #        "-r",
+    #        "-h",
+    #        "-l",
+    #        "-W",
+    #        "--info=progress2",
+    #        "--exclude='Thumbnail_Images'",
+    #        f"/mnt/pns/runs/{run_dir}/",
+    #        f"/staging/hot/{run_dir}/"])
+    # run(["mkdir",
+    #        f"/staging/hot/reads/{run_dir}"])
     run(["mkdir",
-           f"/staging/hot/reads/{run_dir}"])
+            f"/staging/hot/reads/{run_dir}/I10"])
+    print("running dragen to generate sample sheet")
     run(["dragen",
-           "--bcl-conversion-only true",
-           "--bcl-use-hw false",
-           "--bcl-only-matched-reads true",
-           f"--bcl-input-directory /staging/hot/{run_dir}",
-           f"--sample-sheet /staging/hot/{run_dir}/SampleSheet_I10.csv ",
-           f"--output-directory /staging/hot/reads/{run_dir}/I10"])
+        "--bcl-conversion-only true",
+        "--bcl-use-hw false",
+        "--bcl-only-matched-reads true",
+        f"--bcl-input-directory /staging/hot/{run_dir}/",
+        #f" --sample-sheet /staging/hot/{run_dir}/SampleSheet_I10.csv"
+        f"--output-directory /staging/hot/reads/{run_dir}/I10/"])
 
 # TODO comments from readme
 def align(run_path: str):
     run_dir = dir_from_path(run_path)
     BED = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
     fastq_list = f"/staging/hot/reads/{run_dir}/I10/Reports/fastq_list.csv"
-    bams_dir = f"/mnt/pns/bams/{run_dir}/{{}}"
+    bams_dir = f"/mnt/pns/bams/{run_dir}/{{}}/"
 
+    print("create bams folder")
     cut1 = run(["cut", "-f2", "--delimiter=,", fastq_list], stdout=PIPE)
     grep1 = run(["grep", "-Ev", "^RGSM"], stdin=cut1.stdout, stdout=PIPE)
     sort1 = run(["sort", "-u"], stdin=grep1.stdout, stdout=PIPE)
     xargs1 = run(["xargs", "-L1", "-I{}", f"mkdir -p {bams_dir}"], stdin=sort1.stdout)
 
+    print("running dragen alignment")
     cut2 = run(["cut", "-f2", "--delimiter=,", fastq_list], stdout=PIPE)
     grep2 = run(["grep", "-Ev", "^RGSM"], stdin=cut2.stdout, stdout=PIPE)
     sort2 = run(["sort", "-u"], stdin=grep2.stdout, stdout=PIPE)
     xargs2 = run(["xargs", "-L1", "-I{}",
-                    ("dragen --intermediate-results-dir /staging/tmp"
-                            "--enable-map-align true"
-                            "--enable-map-align-output true"
-                            "--output-format BAM"
-                            "--enable-duplicate-marking true"
-                            "--generate-sa-tags true"
-                            "--enable-sort true"
-                            "--ref-dir /staging/human/reference/hg38_alt_masked_graph_v2"
-                            "--qc-coverage-tag-1 exon"
-                            f"--qc-coverage-region-1 {BED}"
-                            "--qc-coverage-reports-1 cov_report"
-                            "--qc-coverage-ignore-overlaps true"
-                            "--enable-variant-caller true"
-                            "--vc-emit-ref-confidence GVCF"
-                            "--enable-hla true"
-                            f"--fastq-list {fastq_list}"
-                            "--fastq-list-sample-id {}"
-                            f"--output-directory {bams_dir} --output-file-prefix {{}}")]
+                    ("dragen --intermediate-results-dir /staging/tmp/"
+                            " --enable-map-align true"
+                            " --enable-map-align-output true"
+                            " --output-format BAM"
+                            " --enable-duplicate-marking true"
+                            " --generate-sa-tags true"
+                            " --enable-sort true"
+                            " --ref-dir /staging/human/reference/hg38_alt_masked_graph_v2/"
+                            " --qc-coverage-tag-1 exon"
+                            f" --qc-coverage-region-1 {BED}"
+                            " --qc-coverage-reports-1 cov_report"
+                            " --qc-coverage-ignore-overlaps true"
+                            " --enable-variant-caller true"
+                            " --vc-emit-ref-confidence GVCF"
+                            " --enable-hla true"
+                            f" --fastq-list {fastq_list}"
+                            " --fastq-list-sample-id {}"
+                            f" --output-directory {bams_dir} --output-file-prefix {{}}")]
                     ,stdin=sort2.stdout)
 
 def multiqc_report(run_path: str):
     run_dir = dir_from_path(run_path)
+    print("generating multiqc report")
     run(["rm", "-f", f"/mnt/pns/bams/{run_dir}/*/*.wgs_*.csv"])
-    run(["multiqc",
-           f"--outdir /mnt/pns/bams/{run_dir}/",
-           f"/mnt/pns/bams/{run_dir}",
-           f"/staging/hot/reads/{run_dir}/I10"])
+    run([("multiqc"
+           f" --outdir /mnt/pns/bams/{run_dir}/"
+           f" /mnt/pns/bams/{run_dir}"
+           f" /staging/hot/reads/{run_dir}/I10/")])
 
 
 def qc_run(run_path: str):
