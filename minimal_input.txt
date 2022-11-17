@@ -1,0 +1,9 @@
+sample_id	maternal_id	paternal_id	well_id	lane	tumor/normal	pre-hyb (ng)	hyb (ng)
+							
+							
+							
+							
+							
+							
+							
+							
