@@ -71,12 +71,14 @@ def save_occ_pf_plot(df, run_dir: str):
             alpha=0.5,
             s=8,
         )
+        # plt.figure(figsize=(3,3), dpi=80)
         plt.xlim([0, 100])
         plt.ylim([50, 100])
         plt.legend(title=hue, bbox_to_anchor=[1.2, 0.9])
         plt.tight_layout()
-        print("saving occ pf graph to" + f"/staging/hot/reads/{run_dir}/" + "occupancy" + f"_{hue.lower()}_mqc.jpg")
-        plt.savefig(f"/staging/hot/reads/{run_dir}/I10/" + "occupancy" + f"_{hue.lower()}_mqc.jpg", dpi=600)
+        image_path = f"/staging/hot/reads/{run_dir}/I10/" + "occ_pf" + f"_{hue.lower()}_mqc.jpg"
+        print("saving occ pf graph to " + image_path)
+        plt.savefig(image_path, dpi=300)
         plt.close()
 
 def occ_pf(run_path: str):
