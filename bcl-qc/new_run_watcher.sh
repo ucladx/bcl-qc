@@ -13,7 +13,7 @@ inotifywait -q -m -e create $RUNS_DIR | while read DIRECTORY EVENT FILE; do
             if [ $EVENT == 'CREATE*' ] && [ $FILE == 'CopyComplete.txt' ]
             then
                 # Actually run the QC passes on RUN_DIR
-                python3 bcl_qc.py $RUN_DIR
+                python3 bcl-qc.py $RUN_DIR
             fi
         done
     fi

@@ -1,15 +1,9 @@
 module_order:
-        - SAV:
-                - exclude_fn:
-                        './reads/'
-                - exclude_fn:
-                        './bams/'
-        - DRAGEN:
-                - exclude_fn:
-                        './hot/'
-        - bclconvert:
-                - exclude_fn:
-                        './hot/'
+        - SAV
+        - bclconvert
+        - dragen
+        - custom_content
 
 exclude_modules:
 - snippy
+
