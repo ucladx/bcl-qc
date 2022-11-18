@@ -17,4 +17,4 @@ run_dir=$1
 
 # multiqc
 rm -f /mnt/pns/bams/$run_dir/*/*.wgs_*.csv
-multiqc --outdir /mnt/pns/bams/$run_dir /mnt/pns/bams/$run_dir /staging/hot/reads/$run_dir/I10
+multiqc --force --outdir /mnt/pns/bams/$run_dir /mnt/pns/bams/$run_dir /staging/hot/reads/$run_dir/I10
