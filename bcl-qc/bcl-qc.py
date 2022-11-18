@@ -92,6 +92,8 @@ def occ_pf(run_path: str):
 
 def dir_from_path(path: str):
     # strip everything but dir name
+    # given '/mnt/pns/runs/221013_A01718_0014_AHNYGGDRX2/'
+    # returns: '221013_A01718_0014_AHNYGGDRX2'
     return [x for x in path.split('/') if x][-1]
 
 def qc_run(run_path: str):
@@ -102,4 +104,3 @@ def qc_run(run_path: str):
 if __name__ == "__main__":
     run_path = sys.argv[1]
     qc_run(run_path)
-
