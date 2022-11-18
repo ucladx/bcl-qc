@@ -75,8 +75,8 @@ def save_occ_pf_plot(df, run_dir: str):
         plt.ylim([50, 100])
         plt.legend(title=hue, bbox_to_anchor=[1.2, 0.9])
         plt.tight_layout()
-        print("saving occ pf graph to" + f"/staging/hot/reads/{run_dir}" + "occupancy" + f"_{hue.lower()}_mqc.jpg")
-        plt.savefig(f"/staging/hot/reads/{run_dir}" + "occupancy" + f"_{hue.lower()}_mqc.jpg", dpi=600)
+        print("saving occ pf graph to" + f"/staging/hot/reads/{run_dir}/" + "occupancy" + f"_{hue.lower()}_mqc.jpg")
+        plt.savefig(f"/staging/hot/reads/{run_dir}/I10/" + "occupancy" + f"_{hue.lower()}_mqc.jpg", dpi=600)
         plt.close()
 
 def occ_pf(run_path: str):
