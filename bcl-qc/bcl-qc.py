@@ -22,7 +22,12 @@ def parse_run_metrics(run_path: str):
     valid_to_load[py_interop_run.Extraction] = 1
 
     # Read from the run folder
-    run_metrics.read(run_path, valid_to_load)
+    try:
+        run_metrics.read(run_path, valid_to_load)
+    except:
+        print(f"Error occured trying to open {run_path}")
+        return None
+
     # py_interop_summary.summarize_run_metrics(run_metrics, summary)
 
     # Create the columns
@@ -93,7 +98,7 @@ def occ_pf(run_path: str):
         raise Exception("No data available from given InterOp files.")
 
 def dir_from_path(path: str):
-    # strip everything but dir name
+    # strip everything but last dir name
     # given '/mnt/pns/runs/221013_A01718_0014_AHNYGGDRX2/'
     # returns: '221013_A01718_0014_AHNYGGDRX2'
     return [x for x in path.split('/') if x][-1]
