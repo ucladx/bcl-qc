@@ -8,14 +8,15 @@ from interop import py_interop_run_metrics, py_interop_run, py_interop_table
 
 def parse_run_metrics(run_path: str):
     """
-    Returns a dataframe of `interop_imaging_table` or returns None if no data is found
+    Returns a DataFrame of `interop_imaging_table` or returns None if no data is found.
 
-    More info on the `interop` library:
+    More info on `interop_imaging_table` and the `interop` library:
     http://illumina.github.io/interop/index.html
+    https://github.com/Illumina/interop
     """
+
     # Initialize interop objects
     run_metrics = py_interop_run_metrics.run_metrics()
-    # summary = py_interop_summary.run_summary()
     valid_to_load = py_interop_run.uchar_vector(py_interop_run.MetricCount, 0)
     valid_to_load[py_interop_run.ExtendedTile] = 1
     valid_to_load[py_interop_run.Tile] = 1
@@ -28,14 +29,14 @@ def parse_run_metrics(run_path: str):
         print(f"Error occured trying to open {run_path}")
         return None
 
-    # py_interop_summary.summarize_run_metrics(run_metrics, summary)
-
-    # Create the columns
+    # Set up data table
     columns = py_interop_table.imaging_column_vector()
     py_interop_table.create_imaging_table_columns(run_metrics, columns)
+    ncolumns = columns.size()
+    if ncolumns == 0: return None # no data
 
     headers = []
-    for i in range(columns.size()):
+    for i in range(ncolumns):
         column = columns[i]
         if column.has_children():
             headers.extend(
@@ -47,66 +48,61 @@ def parse_run_metrics(run_path: str):
     row_offsets = py_interop_table.map_id_offset()
     py_interop_table.count_table_rows(run_metrics, row_offsets)
     data = zeros((row_offsets.size(), column_count), dtype=float32)
+
+    # Populate table
     py_interop_table.populate_imaging_table_data(
         run_metrics, columns, row_offsets, data.ravel()
     )
 
-    # Make a DataFrame
-    df = DataFrame(data, columns=headers)
+    return DataFrame(data, columns=headers)
 
-    # Return None if there is no data
-    if df.shape[0] == 0:
-        return None
-    else:
-        return df
+def occ_pf_plot(df: DataFrame, run_path: str):
+    """
+    Given an interop imaging table dataframe,
+    saves a % Occupied x % Pass Filter scatter to `SAVE_DIR`.
+    """
+    run_name = get_run_name(run_path)
+    SAVE_DIR = f"/staging/hot/reads/{run_name}/I10/"
 
-# Given an interop imaging table dataframe,
-# saves a scatter plot of its Occupied% x PassFilter% data to `run_dir`
-def save_occ_pf_plot(df, run_dir: str):
     x = "% Pass Filter"
     y = "% Occupied"
-    hues = ["Lane"] # can add e.g. "Tile" or "Cycle" for different views
-
-    for hue in hues:
+    views = ["Lane"] # can add "Tile" or "Cycle" for more views
+    for view in views:
         scatterplot(
             data=df,
             x=x,
             y=y,
-            hue=hue,
+            hue=view,
             alpha=0.5,
             s=8,
         )
-        # plt.figure(figsize=(3,3), dpi=80)
         plt.xlim([0, 100])
         plt.ylim([50, 100])
-        plt.legend(title=hue, bbox_to_anchor=[1.2, 0.9])
+        plt.legend(title=view, bbox_to_anchor=[1.2, 0.9])
         plt.tight_layout()
-        image_path = f"/staging/hot/reads/{run_dir}/I10/" + "occ_pf" + f"_{hue.lower()}_mqc.jpg"
+
+        image_path = SAVE_DIR + f"occ_pf_{view.lower()}_mqc.jpg"
         print("saving occ pf graph to " + image_path)
         plt.savefig(image_path, dpi=300)
         plt.close()
 
-def occ_pf(run_path: str):
+def get_run_name(run_path: str):
     """
-    Saves a scatter plot of % Occupied x % Pass Filter by lane for the run in `run_dir`
+    Given '.../221013_A01718_0014_AHNYGGDRX2/',
+    returns '221013_A01718_0014_AHNYGGDRX2'
     """
-    df = parse_run_metrics(run_path)
-    if df is not None:
-        run_dir = dir_from_path(run_path)
-        save_occ_pf_plot(df, run_dir)
-    else:
-        raise Exception("No data available from given InterOp files.")
-
-def dir_from_path(path: str):
-    # strip everything but last dir name
-    # given '/mnt/pns/runs/221013_A01718_0014_AHNYGGDRX2/'
-    # returns: '221013_A01718_0014_AHNYGGDRX2'
-    return [x for x in path.split('/') if x][-1]
+    return [x for x in run_path.split('/') if x][-1]
 
 def qc_run(run_path: str):
-    occ_pf(run_path)
-    run_dir = dir_from_path(run_path)
-    call(["bash", "bcl-qc.sh", run_dir])
+    df = parse_run_metrics(run_path)
+    if df is not None:
+        occ_pf_plot(df, run_path)
+    else:
+        print("Unable to parse Interop files ---",
+            "could not generate % Occupied x % Pass Filter graph.")
+
+    # ex: `bash bcl-qc.sh 221013_A01718_0014_AHNYGGDRX2`
+    call(["bash", "bcl-qc.sh", get_run_name(run_path)])
 
 if __name__ == "__main__":
     run_path = sys.argv[1]

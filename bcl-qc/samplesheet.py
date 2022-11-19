@@ -5,7 +5,7 @@ from Bio.Seq import Seq
 from skbio.sequence import DNA
 
 # TODO: Don't use Perl for this
-# Instead, call `samplesheet.py` from `new_run_watcher.sh`
+# Instead, call `samplesheet.py` from `new_run_watcher.sh` if SampleSheet.xml is not in the run folder
 # If we find that no SampleSheet already exists, then run the equivalent of this command (in Python)
 
 # def sample_sheet_cmd():
@@ -15,6 +15,18 @@ from skbio.sequence import DNA
 #         "-ne",
 #         "'BEGIN{%m=map{@c=split(\"\\t\"); (\"$c[0] $c[2]\", \"$c[3],$c[4]\")}`cat ~/illumina_barcodes.txt`} chomp($F[1]); print join(\",\",$F[0],$m{$F[1]})'",
 #         "sample_index_map.txt"])
+
+def parse_tsv(path: str):
+    """
+    Returns a DataFrame of the TSV file at `path`
+    """
+    return pd.read_csv(path, sep = '\t')
+
+def create_samplesheet(beaker_path: str):
+    with open('../data/illumina_barcodes.txt', 'r') as file:
+        barcodes = file.read()
+        beaker_df = parse_tsv(beaker_path)
+    return None
 
 def check_barcodes():
     """

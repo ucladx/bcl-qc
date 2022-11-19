@@ -5,7 +5,8 @@ while true; do
 inotifywait -q -m -e create $RUNS_DIR | while read DIRECTORY EVENT FILE; do
     if [ $EVENT == 'CREATE*' ]
     then
-        # Check that `FILE` is a run directory
+        # Check that `FILE` matches the run directory name format
+        # TODO validate better here
         [[ $FILE =~ "\d{6}_[a-zA-Z0-9]{6}_\d{4}_[a-zA-Z0-9]{10}" ]] || continue
         # Now watch `RUN_DIR` for creation of "CopyComplete.txt"
         RUN_DIR=$FILE
