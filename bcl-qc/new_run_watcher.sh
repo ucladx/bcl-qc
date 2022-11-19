@@ -1,4 +1,4 @@
-RUNS_DIR='/mnt/pns/runs/'
+RUNS_DIR=$1
 
 while true; do
 # Watch `RUNS_DIR` for creation of new files
