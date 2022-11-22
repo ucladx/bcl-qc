@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import pandas as pd 
+import pandas as pd
+from subprocess import run
 from Bio.Seq import Seq
 from skbio.sequence import DNA
 
@@ -22,11 +23,85 @@ def parse_tsv(path: str):
     """
     return pd.read_csv(path, sep = '\t')
 
+def get_dragen_version():
+    """
+    Attempts to get the dragen version on the current machine
+    Returns None if a problem occurs
+    """
+    try:
+        # gets the extended version number from the `CompletedProcess` stdout
+        version_num = run(["dragen", "--version"], capture_output=True).stdout.split()[-1]
+    except:
+        print("Problem running \'dragen --version\' or accessing its output")
+        return None
+    
+    # given b'07.021.645.4.0.3', return '4.0.3'
+    # XXX we assume that we want exactly the last 5 digits here
+    # may be a problem if we gets versions like '4.01.3'
+    return version_num.decode("utf-8")[-5:]
+
+
+def create_samplesheet_header():
+    """
+    Creates the header for the BCL-QC SampleSheet
+    """
+    # TODO handle SampleSheets that aren't I10 (use OverrideCycles)
+    dragen_version = get_dragen_version()
+
+
+def beaker_to_samplesheet(beaker_df: pd.DataFrame, barcodes):
+    """
+    Given a DataFrame of the Beaker extract,
+    returns a DataFrame representing the BCL-QC SampleSheet
+    """
+    samplesheet_fields = ["sample_id",
+                          "plate_id",
+                          "well_id",
+                          "run_id",
+                          "specimen_type",
+                          "tissue_source",
+                          "patient_name",
+                          "sex",
+                          "MRN",
+                          "dob",
+                          "family_id",
+                          "provider_name",
+                          "test_ordered",
+                          "diagnosis",
+                          "pre_hyb conc",
+                          "pre_hyb_avg_size",
+                          "final_lib_conc",
+                          "final_lib_size",
+                          ]
+    
+    header = create_samplesheet_header()
+    # prepend header
+    # synthesize some info from beaker extract (proband, tumor / normal)
+        # this might come at a later step (i.e., before variant calling)
+
 def create_samplesheet(beaker_path: str):
     with open('../data/illumina_barcodes.txt', 'r') as file:
         barcodes = file.read()
         beaker_df = parse_tsv(beaker_path)
-    return None
+        if beaker_df.empty:
+            print(f"No data found from Beaker extract at {beaker_path}")
+            return
+        else:
+            return beaker_to_samplesheet(beaker_df, barcodes)
+
+def save_samplesheet(run_path: str, beaker_path: str):
+    """
+    Generates the BCL-QC SampleSheet
+    and saves it to `run_path/SampleSheet_I10.csv`
+    """
+    sample_sheet = create_samplesheet(beaker_path)
+    try:
+        file = open(f"{run_path}/SampleSheet_I10.csv", "w")
+        file.write(sample_sheet)
+        file.close()
+    except:
+        print(f"Failed to write to {run_path}/SampleSheet_I10.csv")
+        return
 
 def check_barcodes():
     """
