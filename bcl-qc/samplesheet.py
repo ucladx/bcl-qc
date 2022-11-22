@@ -45,8 +45,11 @@ def create_samplesheet_header():
     """
     Creates the header for the BCL-QC SampleSheet
     """
-    # TODO handle SampleSheets that aren't I10 (use OverrideCycles)
-    dragen_version = get_dragen_version()
+    # TODO handle SampleSheets that aren't I10 (add OverrideCycles to bclconvert_string)
+    header_string = "[Header]\nFileFormatVersion,2\n"
+    reads_string = "[Reads]\nRead1Cycles,151\nRead2Cycles,151\nIndex1Cycles,10\nIndex2Cycles\n"
+    bclconvert_string = f"[BCLConvert_Settings]\nSoftwareVersion,{get_dragen_version()}\nBarcodeMismatchesIndex1,1\nBarcodeMismatchesIndex2,1\n"
+    return header_string + reads_string + bclconvert_string
 
 
 def beaker_to_samplesheet(beaker_df: pd.DataFrame, barcodes):
@@ -75,9 +78,11 @@ def beaker_to_samplesheet(beaker_df: pd.DataFrame, barcodes):
                           ]
     
     header = create_samplesheet_header()
+    # map beaker extract fields to `samplesheet_fields` above (some may require analyses?)
     # prepend header
-    # synthesize some info from beaker extract (proband, tumor / normal)
-        # this might come at a later step (i.e., before variant calling)
+    # return as csv
+    return None
+
 
 def create_samplesheet(beaker_path: str):
     with open('../data/illumina_barcodes.txt', 'r') as file:
