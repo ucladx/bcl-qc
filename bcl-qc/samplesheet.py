@@ -17,29 +17,21 @@ from skbio.sequence import DNA
 #         "'BEGIN{%m=map{@c=split(\"\\t\"); (\"$c[0] $c[2]\", \"$c[3],$c[4]\")}`cat ~/illumina_barcodes.txt`} chomp($F[1]); print join(\",\",$F[0],$m{$F[1]})'",
 #         "sample_index_map.txt"])
 
-def parse_tsv(path: str):
-    """
-    Returns a DataFrame of the TSV file at `path`
-    """
-    return pd.read_csv(path, sep = '\t')
-
 def get_dragen_version():
     """
     Attempts to get the dragen version on the current machine
     Returns None if a problem occurs
     """
     try:
-        # gets the extended version number from the `CompletedProcess` stdout
+        # run dragen and get the relevant output from `CompletedProcess`
         version_num = run(["dragen", "--version"], capture_output=True).stdout.split()[-1]
     except:
-        print("Problem running \'dragen --version\' or accessing its output")
+        print("Problem running \'dragen --version\' or parsing its output")
         return None
     
     # given b'07.021.645.4.0.3', return '4.0.3'
-    # XXX we assume that we want exactly the last 5 digits here
-    # may be a problem if we gets versions like '4.01.3'
-    return version_num.decode("utf-8")[-5:]
-
+    version_num = version_num.split(b".", 3)[-1].decode("utf-8")
+    return version_num
 
 def create_samplesheet_header():
     """
@@ -87,7 +79,7 @@ def beaker_to_samplesheet(beaker_df: pd.DataFrame, barcodes):
 def create_samplesheet(beaker_path: str):
     with open('../data/illumina_barcodes.txt', 'r') as file:
         barcodes = file.read()
-        beaker_df = parse_tsv(beaker_path)
+        beaker_df = pd.read_csv(beaker_path, sep = '\t')
         if beaker_df.empty:
             print(f"No data found from Beaker extract at {beaker_path}")
             return
