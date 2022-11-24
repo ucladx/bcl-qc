@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import pandas as pd
+import csv
 from subprocess import run
 from Bio.Seq import Seq
 from skbio.sequence import DNA
@@ -43,48 +44,81 @@ def create_samplesheet_header():
     bclconvert_string = f"[BCLConvert_Settings]\nSoftwareVersion,{get_dragen_version()}\nBarcodeMismatchesIndex1,1\nBarcodeMismatchesIndex2,1\n"
     return header_string + reads_string + bclconvert_string
 
-
-def beaker_to_samplesheet(beaker_df: pd.DataFrame, barcodes):
+def beaker_to_samplesheet(beaker_df: pd.DataFrame):
     """
     Given a DataFrame of the Beaker extract,
-    returns a DataFrame representing the BCL-QC SampleSheet
+    returns a CSV string of the BCL-QC SampleSheet
     """
-    samplesheet_fields = ["sample_id",
-                          "plate_id",
-                          "well_id",
-                          "run_id",
-                          "specimen_type",
-                          "tissue_source",
-                          "patient_name",
-                          "sex",
-                          "MRN",
-                          "dob",
-                          "family_id",
-                          "provider_name",
-                          "test_ordered",
-                          "diagnosis",
-                          "pre_hyb conc",
-                          "pre_hyb_avg_size",
-                          "final_lib_conc",
-                          "final_lib_size",
-                          ]
-    
-    header = create_samplesheet_header()
-    # map beaker extract fields to `samplesheet_fields` above (some may require analyses?)
-    # prepend header
-    # return as csv
-    return None
 
+    samplesheet_cols = [
+        "sample_id",
+        "index1",
+        "index2",]
+
+    samplesheet_df = pd.DataFrame(columns=samplesheet_cols)
+    samplesheet_df['sample_id'] = beaker_df['sample_id']
+    samplesheet_df['index1', 'index2'] = get_indices_pairs(beaker_df[['plate_id', 'sample_id']])
+    samplesheet = create_samplesheet_header() + samplesheet_df
+    return samplesheet
+
+def beaker_to_minimal_input(beaker_df: pd.DataFrame):
+    min_input_cols = [
+        "sample_id",
+        "plate_id",
+        "well_id",
+        "run_id",
+        "specimen_type",
+        "tissue_source",
+        "patient_name",
+        "sex",
+        "MRN",
+        "dob",
+        "family_id",
+        "provider_name",
+        "test_ordered",
+        "diagnosis",
+        "pre_hyb conc",
+        "pre_hyb_avg_size",
+        "final_lib_conc",
+        "final_lib_size",
+    ]
+
+    min_input_df = pd.DataFrame(columns=min_input_cols)
+    # copy columns that have the same names in both DFs
+    for dup_col_name in ['plate_id', 'well_id']:
+        min_input_df['dup_col_name'] = beaker_df['dup_col_name']
+
+    # TODO manually map the columns that don't have the same name
+    
+    raise NotImplementedError
+
+def get_indices_pairs(beaker_df: pd.DataFrame):
+    """
+    Given the Beaker DataFrame, returns a list of (index, index2),
+    corresponding to each row
+    """
+    BARCODES_PATH = '../static/illumina_barcodes.txt'
+    try:
+        ib_df = pd.read_csv(BARCODES_PATH, sep='\t', header=None)
+        ib_df.columns = ['plate_id', 'index_id', 'sample_id', 'index1', 'index2']
+        indices = []
+        for beaker_row in beaker_df.itertuples():
+            for ib_row in ib_df.itertuples():
+                if beaker_row.plate_id == ib_row.plate_id and beaker_row.sample_id == ib_row.sample_id:
+                    indices.append((ib_row.index1, ib_row.index2))
+    except:
+        print(f"Failed to open {BARCODES_PATH}")
 
 def create_samplesheet(beaker_path: str):
-    with open('../data/illumina_barcodes.txt', 'r') as file:
-        barcodes = file.read()
+    try:
         beaker_df = pd.read_csv(beaker_path, sep = '\t')
         if beaker_df.empty:
             print(f"No data found from Beaker extract at {beaker_path}")
             return
         else:
-            return beaker_to_samplesheet(beaker_df, barcodes)
+            return beaker_to_samplesheet(beaker_df)
+    except:
+        print(f"Error opening {beaker_path}")
 
 def save_samplesheet(run_path: str, beaker_path: str):
     """
