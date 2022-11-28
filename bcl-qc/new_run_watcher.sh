@@ -8,11 +8,11 @@ inotifywait -q -m -e create $RUNS_DIR | while read DIRECTORY EVENT FILE; do
         [[ $FILE =~ "\d{6}_[a-zA-Z0-9]{6}_\d{4}_[a-zA-Z0-9]{10}" ]] || continue
         # If it does, wait until the run is finished and a SampleSheet has been generated
         RUN_DIR=$FILE
-        while true; do
-            if [[ -f '$RUN_DIR/CopyComplete.txt' ]] && [[-f '$RUN_DIR/SampleSheet_I10.csv']]; then
-                python3 bcl-qc.py $RUN_DIR
-            else
-                sleep 300 # wait 5 minutes for run to possibly finish
+        inotifywait -q -m -e create $RUN_DIR | while read DIRECTORY EVENT FILE; do
+            if [ $EVENT == 'CREATE*' ]; then
+                if [[ $FILE == 'CopyComplete.txt' ]] && [[ -f '$RUN_DIR/SampleSheet_I10.csv']]; then
+                    python3 bcl-qc.py $RUN_DIR
+                fi
             fi
         done
     fi

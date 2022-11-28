@@ -5,6 +5,7 @@ from numpy import zeros, float32
 from pandas import DataFrame
 from seaborn import scatterplot
 from interop import py_interop_run_metrics, py_interop_run, py_interop_table
+from os.path import exists
 
 def parse_run_metrics(run_path: str):
     """
@@ -93,16 +94,22 @@ def get_run_name(run_path: str):
     """
     return [x for x in run_path.split('/') if x][-1]
 
-def qc_run(run_path: str):
-    df = parse_run_metrics(run_path)
-    if df is not None:
-        occ_pf_plot(df, run_path)
-    else:
-        print("Unable to parse Interop files ---",
-            "could not generate % Occupied x % Pass Filter graph.")
+def samplesheet_exists(run_path):
+    return exists(run_path + "SampleSheet_I10.csv")
 
-    # ex: `bash bcl-qc.sh 221013_A01718_0014_AHNYGGDRX2`
-    call(["bash", "bcl-qc.sh", get_run_name(run_path)])
+def qc_run(run_path: str):
+    if samplesheet_exists(run_path):
+        df = parse_run_metrics(run_path)
+        if df is not None:
+            occ_pf_plot(df, run_path)
+        else:
+            print("Unable to parse Interop files ---",
+                "could not generate % Occupied x % Pass Filter graph.")
+
+        # ex: `bash bcl-qc.sh 221013_A01718_0014_AHNYGGDRX2`
+        call(["bash", "bcl-qc.sh", get_run_name(run_path)])
+    else:
+        print(f"SampleSheet_I10.csv not found in {run_path}")
 
 if __name__ == "__main__":
     run_path = sys.argv[1]

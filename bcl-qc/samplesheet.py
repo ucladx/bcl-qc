@@ -47,7 +47,7 @@ def create_samplesheet_header():
 def beaker_to_samplesheet(beaker_df: pd.DataFrame):
     """
     Given a DataFrame of the Beaker extract,
-    returns a CSV string of the BCL-QC SampleSheet
+    returns a string representing the BCL-QC SampleSheet CSV
     """
 
     samplesheet_cols = [
@@ -86,7 +86,7 @@ def beaker_to_minimal_input(beaker_df: pd.DataFrame):
     min_input_df = pd.DataFrame(columns=min_input_cols)
     # copy columns that have the same names in both DFs
     for dup_col_name in ['plate_id', 'well_id']:
-        min_input_df['dup_col_name'] = beaker_df['dup_col_name']
+        min_input_df[f'{dup_col_name}'] = beaker_df[f'{dup_col_name}']
 
     # TODO manually map the columns that don't have the same name
     
