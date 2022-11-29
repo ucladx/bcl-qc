@@ -95,9 +95,11 @@ def get_run_name(run_path: str):
     return [x for x in run_path.split('/') if x][-1]
 
 def samplesheet_exists(run_path):
+    if run_path[-1] != '/': run_path += '/' # ensure trailing slash 
     return exists(run_path + "SampleSheet_I10.csv")
 
 def qc_run(run_path: str):
+    # check for 
     if samplesheet_exists(run_path):
         df = parse_run_metrics(run_path)
         if df is not None:
