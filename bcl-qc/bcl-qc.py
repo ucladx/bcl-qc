@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import sys
-from subprocess import run
+from subprocess import call
 from numpy import zeros, float32
 from pandas import DataFrame
 from seaborn import scatterplot
@@ -64,8 +64,8 @@ def occ_pf_plot(df: DataFrame, run_path: str):
     """
     run_name = get_run_name(run_path)
     save_dir = f"/staging/hot/reads/{run_name}/I10/"
-    run(["mkdir"], [f"/staging/hot/reads/{run_name}/"])
-    run(["mkdir"], [save_dir])
+    call(["mkdir"], [f"/staging/hot/reads/{run_name}/"])
+    call(["mkdir"], [save_dir])
 
     x = "% Pass Filter"
     y = "% Occupied"
