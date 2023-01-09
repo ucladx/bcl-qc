@@ -5,8 +5,8 @@ echo "copying $run_dir to staging"
 rsync -rhlW --info=progress2 --exclude='Thumbnail_Images' /mnt/pns/runs/$run_dir /staging/hot/$run_dir
 
 # echo "setting up reads folder"
-# mkdir /staging/hot/reads/$run_dir
-# mkdir /staging/hot/reads/$run_dir/I10
+mkdir /staging/hot/reads/$run_dir
+mkdir /staging/hot/reads/$run_dir/I10
 
 echo "running demux"
 dragen --bcl-conversion-only true --bcl-use-hw false --bcl-only-matched-reads true --bcl-input-directory /staging/hot/$run_dir --sample-sheet /staging/hot/$run_dir/SampleSheet_I10.csv --output-directory /staging/hot/reads/$run_dir/I10
