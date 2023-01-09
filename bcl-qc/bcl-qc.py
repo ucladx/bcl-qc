@@ -63,9 +63,9 @@ def occ_pf_plot(df: DataFrame, run_path: str):
     saves a % Occupied x % Pass Filter scatter to `SAVE_DIR`.
     """
     run_name = get_run_name(run_path)
-    run(["mkdir"], [f"/staging/hot/reads/{run_name}"])
-    run(["mkdir"], [f"/staging/hot/reads/{run_name}/I10/"])
-    SAVE_DIR = f"/staging/hot/reads/{run_name}/I10/"
+    save_dir = f"/staging/hot/reads/{run_name}/I10/"
+    run(["mkdir"], [f"/staging/hot/reads/{run_name}/"])
+    run(["mkdir"], [save_dir])
 
     x = "% Pass Filter"
     y = "% Occupied"
@@ -84,7 +84,7 @@ def occ_pf_plot(df: DataFrame, run_path: str):
         plt.legend(title=view, bbox_to_anchor=[1.2, 0.9])
         plt.tight_layout()
 
-        image_path = SAVE_DIR + f"occ_pf_{view.lower()}_mqc.jpg"
+        image_path = save_dir + f"occ_pf_{view.lower()}_mqc.jpg"
         print("saving occ pf graph to " + image_path)
         plt.savefig(image_path, dpi=300)
         plt.close()
