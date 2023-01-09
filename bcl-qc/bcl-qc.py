@@ -62,8 +62,8 @@ def occ_pf_plot(df: DataFrame, run_path: str):
     Given an interop imaging table dataframe,
     saves a % Occupied x % Pass Filter scatter to `SAVE_DIR`.
     """
-    # run_name = get_run_name(run_path)
-    # save_dir = f"/staging/hot/reads/{run_name}/I10/"
+    run_name = get_run_name(run_path)
+    save_dir = f"/staging/hot/reads/{run_name}/I10/"
     # call(["mkdir", f"/staging/hot/reads/{run_name}/"])
     # call(["mkdir", save_dir])
 
