@@ -101,17 +101,15 @@ def samplesheet_exists(run_path):
     return exists(run_path + "SampleSheet_I10.csv")
 
 def qc_run(run_path: str):
-    # check for 
     if samplesheet_exists(run_path):
         df = parse_run_metrics(run_path)
-        if df is not None:
-            occ_pf_plot(df, run_path)
-        else:
-            print("Unable to parse Interop files ---",
-                "could not generate % Occupied x % Pass Filter graph.")
+        if df is None:
+            print("Unable to parse Interop files\n",
+                  "Could not generate % Occupied x % Pass Filter graph.")
 
         # ex: `bash bcl-qc.sh 221013_A01718_0014_AHNYGGDRX2`
         call(["bash", "bcl-qc.sh", get_run_name(run_path)])
+        occ_pf_plot(df, run_path)
     else:
         print(f"SampleSheet_I10.csv not found in {run_path}")
 
