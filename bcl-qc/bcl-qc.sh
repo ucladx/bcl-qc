@@ -9,7 +9,7 @@ mkdir /staging/hot/reads/$run_dir
 mkdir /staging/hot/reads/$run_dir/I10
 
 echo "running demux"
-dragen --bcl-conversion-only true --bcl-use-hw false --bcl-only-matched-reads true --bcl-input-directory /staging/hot/$run_dir --sample-sheet /staging/hot/$run_dir/SampleSheet_I10.csv --output-directory /staging/hot/reads/$run_dir/I10
+dragen --bcl-conversion-only true --bcl-use-hw false --bcl-only-matched-reads true --bcl-input-directory /staging/hot/$run_dir --sample-sheet /staging/hot/$run_dir/SampleSheet_I10.csv --output-directory --force /staging/hot/reads/$run_dir/I10
 
 ### align
 EXONS=/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed
