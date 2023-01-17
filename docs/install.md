@@ -1,19 +1,20 @@
 ## Setting up
 
-### Install mamba
-```shell=
-curl -L https://github.com/conda-forge/miniforge/releases/download/22.9.0-1/Mambaforge-Linux-x86_64.sh -o mambaforge.sh
+### Install Mamba
+```shell
+curl -L https://github.com/conda-forge/miniforge/releases/download/22.9.0-3/Mambaforge-Linux-x86_64.sh -o mambaforge.sh
 sh mambaforge.sh -bfp $HOME/mambaforge && rm -f mambaforge.sh
+$HOME/mambaforge/condabin/mamba init
 ```
 
-### setup environment
-```shell=
-ENV_NAME='bclqc'
-conda init
-conda create --name $ENV_NAME --file ~/config/bcl-qc/bclqc_conda_env.txt
-conda activate $ENV_NAME
-pip3 install -r ~/bcl-qc/config/requirements.txt
+### Setup environment
+```shell
+mamba create --name bcl-qc --file config/conda_env.txt
+conda activate bcl-qc
+pip3 install -r config/py_requirements.txt
 ```
 
-# start run watcher
-sh ~/bcl-qc/new_run_watcher.sh <runs-directory>
+# Start run watcher
+```shell
+sh bcl-qc/new_run_watcher.sh <runs-directory>
+```
