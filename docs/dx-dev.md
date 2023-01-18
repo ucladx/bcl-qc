@@ -83,7 +83,7 @@ We'll choose to install Ubuntu 22.04 for the newer kernel and for security updat
 
 1. Install mamba (fast conda replacement that uses conda-forge as default channel):
     ```bash
-    curl -L https://github.com/conda-forge/miniforge/releases/download/4.12.0-2/Mambaforge-Linux-x86_64.sh -o /tmp/mambaforge.sh
+    curl -L https://github.com/conda-forge/miniforge/releases/download/22.9.0-3/Mambaforge-Linux-x86_64.sh -o /tmp/mambaforge.sh
     sh /tmp/mambaforge.sh -bfp $HOME/mambaforge && rm -f /tmp/mambaforge.sh
     ```
 2. Add the following lines into your `.bashrc` file, then logout and login to load it:
@@ -91,7 +91,6 @@ We'll choose to install Ubuntu 22.04 for the newer kernel and for security updat
     # Add mambaforge to PATH if found, and load the base environment
     if [ -f "$HOME/mambaforge/etc/profile.d/conda.sh" ]; then
         . $HOME/mambaforge/etc/profile.d/conda.sh
-        conda activate
     fi
     ```
 3. Create two conda environments, one with basic bioinformatics tools, and the other for interaction with AWS/DNAnexus:
