@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import sys
+import re
 from subprocess import call
 from numpy import zeros, float32
 from pandas import DataFrame
@@ -100,19 +101,37 @@ def samplesheet_exists(run_path):
     if run_path[-1] != '/': run_path += '/' # ensure trailing slash 
     return exists(run_path + "SampleSheet_I10.csv")
 
-def qc_run(run_path: str):
+def qc_run(run_path: str, flags: str):
     if samplesheet_exists(run_path):
         df = parse_run_metrics(run_path)
         if df is None:
             print("Unable to parse Interop files\n",
                   "Could not generate % Occupied x % Pass Filter graph.")
+            return
+        run_name = get_run_name(run_path)
+        multiqc_flag = find_flag('m', flags)
+        megaqc_flag = find_flag('M', flags)
+        azure_upload_flag = find_flag('u', flags)
 
-        # ex: `bash bcl-qc.sh 221013_A01718_0014_AHNYGGDRX2`
-        call(["bash", "bcl-qc.sh", get_run_name(run_path)])
-        occ_pf_plot(df, run_path)
+        bclqc_cmd = "bcl-qc.sh"
+        # if multiqc_flag:
+            # bcl_cmd += " -m"
+        # if megaqc_flag:
+            # bcl_cmd += " -M"
+        call(["bash", bclqc_cmd, run_name])
+        # if azure_upload_flag:
+            # azure_upload(run_name)
+        if multiqc_flag:
+            occ_pf_plot(df, run_path)
     else:
         print(f"SampleSheet_I10.csv not found in {run_path}")
 
+# ex: find_flag('m', "-u -m -M") is True
+def find_flag(letter, text):
+    return re.search(f".*-[a-zA-Z]*{letter}[a-zA-Z]* .*", text)
+
 if __name__ == "__main__":
-    run_path = sys.argv[1]
-    qc_run(run_path)
+    # ex: python3 bcl-qc.py -u -m ~/221013_A01718_0014_AHNYGGDRX2
+    run_path = sys.argv[-1]
+    flags = ' '.join(sys.argv[1:-1])
+    qc_run(run_path, flags)
