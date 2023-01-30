@@ -112,21 +112,18 @@ def qc_run(run_path: str, flags: str):
         multiqc_flag = find_flag('m', flags)
         megaqc_flag = find_flag('M', flags)
         azure_upload_flag = find_flag('u', flags)
-
-        bclqc_cmd = "bcl-qc.sh"
-        # if multiqc_flag:
-            # bcl_cmd += " -m"
-        # if megaqc_flag:
-            # bcl_cmd += " -M"
-        call(["bash", bclqc_cmd, run_name])
+        call(["bash", "bcl-qc.sh", run_name])
         # if azure_upload_flag:
             # azure_upload(run_name)
         if multiqc_flag:
             occ_pf_plot(df, run_path)
-    else:
+            call(["bash", "multiqc.sh", run_name])
+        # if megaqc_flag:
+            # call(["bash", "megaqc.sh", run_name])
+    else: # TODO generate samplesheet
         print(f"SampleSheet_I10.csv not found in {run_path}")
 
-# ex: find_flag('m', "-u -m -M") is True
+# ex: find_flag('m', "-umM") is True
 def find_flag(letter, text):
     return re.search(f".*-[a-zA-Z]*{letter}[a-zA-Z]* .*", text)
 
