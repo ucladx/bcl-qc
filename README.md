@@ -25,18 +25,15 @@ pip install .
 ```
 ::TODO:: Put this in PyPI instead
 
-# install mamba
+#### install mamba
 curl -L https://github.com/conda-forge/miniforge/releases/download/22.9.0-1/Mambaforge-Linux-x86_64.sh -o mambaforge.sh
 sh mambaforge.sh -bfp $HOME/mambaforge && rm -f mambaforge.sh 
 
-# setup environment
+#### setup environment
 conda init
 conda create --name bcl-qc --file ~/bcl-qc/bclqc_conda_env.txt
 conda activate bcl-qc
 pip3 install -r ~/bcl-qc/requirements.txt
 
-# start run watcher
+#### start run watcher
 sh ~/bcl-qc/bcl-qc/new_run_watcher.sh <runs-directory>
-
-# ex: process all runs
-for file in /mnt/pns/runs/*; do python3 ~/bcl-qc/bcl-qc.py $file; done
