@@ -2,11 +2,11 @@ run_name=$1
 
 ### demux
 echo "copying $run_name to staging"
-rsync -rhlW --info=progress2 --exclude='Thumbnail_Images' /mnt/pns/runs/$run_name /staging/hot/$run_name
+# rsync -rhlW --info=progress2 --exclude='Thumbnail_Images' /mnt/pns/runs/$run_name /staging/hot/$run_name
 
-# echo "setting up reads folder"
-mkdir /staging/hot/reads/$run_name
-mkdir /staging/hot/reads/$run_name/I10
+echo "creating reads folder"
+# mkdir /staging/hot/reads/$run_name
+# mkdir /staging/hot/reads/$run_name/I10
 
 echo "running demux"
 dragen --bcl-conversion-only true --bcl-use-hw false --bcl-only-matched-reads true --bcl-input-directory /staging/hot/$run_name --sample-sheet /staging/hot/$run_name/SampleSheet_I10.csv --output-directory /staging/hot/reads/$run_name/I10
