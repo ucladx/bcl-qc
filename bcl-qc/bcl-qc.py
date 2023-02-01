@@ -110,7 +110,9 @@ def qc_run(run_path: str, flags: str):
         multiqc_flag = find_flag('m', flags)
         megaqc_flag = find_flag('M', flags)
         azure_upload_flag = find_flag('u', flags)
-        call(["bash", "bcl-qc.sh", run_name])
+        skip_flag = find_flag('s', flags)
+        if not skip_flag:
+            call(["bash", "bcl-qc.sh", run_name])
         # if azure_upload_flag:
             # azure_upload(run_name)
         if multiqc_flag:

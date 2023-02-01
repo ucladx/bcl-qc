@@ -1,15 +1,15 @@
 run_name=$1
 
 ### demux
-echo "copying $run_name to staging"
-# rsync -rhlW --info=progress2 --exclude='Thumbnail_Images' /mnt/pns/runs/$run_name /staging/hot/$run_name
+# echo "copying $run_name to staging"
+# # rsync -rhlW --info=progress2 --exclude='Thumbnail_Images' /mnt/pns/runs/$run_name /staging/hot/$run_name
 
-echo "creating reads folder"
-# mkdir /staging/hot/reads/$run_name
+echo "creating reads folder on dragen local disk"
+mkdir /staging/hot/reads/$run_name
 # mkdir /staging/hot/reads/$run_name/I10
 
 echo "running demux"
-dragen --bcl-conversion-only true --bcl-use-hw false --bcl-only-matched-reads true --bcl-input-directory /staging/hot/$run_name --sample-sheet /staging/hot/$run_name/SampleSheet_I10.csv --output-directory /staging/hot/reads/$run_name/I10
+dragen --bcl-conversion-only true --bcl-use-hw false --bcl-only-matched-reads true --bcl-input-directory /mnt/pns/runs/$run_name --sample-sheet /mnt/pns/runs/$run_name/SampleSheet_I10.csv --output-directory /staging/hot/reads/$run_name/I10
 
 ### align
 EXONS=/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed
