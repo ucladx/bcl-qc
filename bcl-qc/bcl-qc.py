@@ -64,8 +64,8 @@ def occ_pf_plot(df: DataFrame, run_path: str):
     saves a % Occupied x % Pass Filter scatter to `SAVE_DIR`.
     """
 
-    x = "% Pass Filter"
-    y = "% Occupied"
+    y = "% Pass Filter"
+    x = "% Occupied"
     views = ["Lane"] # can add "Tile" or "Cycle" for more views
     for view in views:
         scatterplot(
