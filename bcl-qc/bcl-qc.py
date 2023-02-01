@@ -122,7 +122,7 @@ def qc_run(run_path: str, flags: str):
         # if azure_upload_flag:
             # azure_upload(run_name)
         run_name = get_run_name(run_path)
-        call(["bash", "bcl-qc.sh", run_name])
+        # call(["bash", "bcl-qc.sh", run_name])
         occ_pf_plot(df, run_path)
         call(["bash", "multiqc.sh", run_name])
         # if multiqc_flag:
