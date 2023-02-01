@@ -82,7 +82,8 @@ def occ_pf_plot(df: DataFrame, run_path: str):
         plt.tight_layout()
 
         run_name = get_run_name(run_path)
-        save_dir = f"/staging/hot/reads/{run_name}/I10/"
+        # save_dir = f"/staging/hot/reads/{run_name}/I10/"
+        save_dir = f"/mnt/pns/bams/{run_name}/"
         image_path = save_dir + f"occ_pf_{view.lower()}_mqc.jpg"
         print("saving occ pf graph to " + image_path)
         plt.savefig(image_path, dpi=300)
@@ -106,18 +107,27 @@ def qc_run(run_path: str, flags: str):
             print("Unable to parse Interop files\n",
                   "Could not generate % Occupied x % Pass Filter graph.")
             return
+        # print(flags)
         run_name = get_run_name(run_path)
         multiqc_flag = find_flag('m', flags)
         megaqc_flag = find_flag('M', flags)
         azure_upload_flag = find_flag('u', flags)
         skip_flag = find_flag('s', flags)
-        if not skip_flag:
-            call(["bash", "bcl-qc.sh", run_name])
+        # print('s')
+        # print(multiqc_flag)
+        # print(megaqc_flag)
+        # print(azure_upload_flag)
+        # print(skip_flag)
+        # print('e')
+        # if not skip_flag:
+            # call(["bash", "bcl-qc.sh", run_name])
         # if azure_upload_flag:
             # azure_upload(run_name)
-        if multiqc_flag:
-            occ_pf_plot(df, run_path)
-            call(["bash", "multiqc.sh", run_name])
+        occ_pf_plot(df, run_path)
+        call(["bash", "multiqc.sh", run_name])
+        # if multiqc_flag:
+        #     occ_pf_plot(df, run_path)
+        #     call(["bash", "multiqc.sh", run_name])
         # if megaqc_flag:
             # call(["bash", "megaqc.sh", run_name])
     else: # TODO generate samplesheet
