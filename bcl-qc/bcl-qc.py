@@ -106,36 +106,27 @@ def qc_run(run_path: str, flags: str):
             print("Unable to parse Interop files\n",
                   "Could not generate % Occupied x % Pass Filter graph.")
             return
-        # TODO DEBUG FLAG SYSTEM
-        # multiqc_flag = find_flag('m', flags)
-        # megaqc_flag = find_flag('M', flags)
-        # azure_upload_flag = find_flag('u', flags)
-        # skip_flag = find_flag('s', flags)
-        # print('s')
-        # print(multiqc_flag)
-        # print(megaqc_flag)
-        # print(azure_upload_flag)
-        # print(skip_flag)
-        # print('e')
-        # if not skip_flag:
-            # call(["bash", "bcl-qc.sh", run_name])
-        # if azure_upload_flag:
-            # azure_upload(run_name)
+
+        multiqc_flag = 'm' in flags
+        megaqc_flag = 'M' in flags
+        azure_upload_flag = 'u' in flags
+        skip_flag = 's' in flags
+
+        if not skip_flag:
+            call(["bash", "bcl-qc.sh", run_name])
+        if azure_upload_flag:
+            azure_upload(run_name)
         run_name = get_run_name(run_path)
-        # call(["bash", "bcl-qc.sh", run_name])
-        occ_pf_plot(df, run_path)
-        call(["bash", "multiqc.sh", run_name])
-        # if multiqc_flag:
-        #     occ_pf_plot(df, run_path)
-        #     call(["bash", "multiqc.sh", run_name])
-        # if megaqc_flag:
-            # call(["bash", "megaqc.sh", run_name])
+        if multiqc_flag:
+            occ_pf_plot(df, run_path)
+            call(["bash", "multiqc.sh", run_name])
+        if megaqc_flag:
+            call(["bash", "megaqc.sh", run_name])
     else: # TODO generate samplesheet
         print(f"SampleSheet_I10.csv not found in {run_path}")
 
-# ex: find_flag('m', "-umM") is True
-def find_flag(letter, text):
-    return re.search(f".*-[a-zA-Z]*{letter}[a-zA-Z]* .*", text)
+def azure_upload(run_name):
+    print("azure upload placeholder")
 
 if __name__ == "__main__":
     # ex: python3 bcl-qc.py -u -m ~/221013_A01718_0014_AHNYGGDRX2
