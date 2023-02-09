@@ -107,6 +107,7 @@ def qc_run(run_path: str, flags: str):
                   "Could not generate % Occupied x % Pass Filter graph.")
             return
 
+        run_name = get_run_name(run_path)
         multiqc_flag = 'm' in flags
         megaqc_flag = 'M' in flags
         azure_upload_flag = 'u' in flags
@@ -116,7 +117,6 @@ def qc_run(run_path: str, flags: str):
             call(["bash", "bcl-qc.sh", run_name])
         if azure_upload_flag:
             azure_upload(run_name)
-        run_name = get_run_name(run_path)
         if multiqc_flag:
             occ_pf_plot(df, run_path)
             call(["bash", "multiqc.sh", run_name])

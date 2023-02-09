@@ -1,5 +1,5 @@
 run_name=$1
-
+echo "running bcl-qc.sh"
 ### demux
 
 echo "creating reads folder on dragen local disk"
