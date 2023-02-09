@@ -99,6 +99,12 @@ def samplesheet_exists(run_path):
     if run_path[-1] != '/': run_path += '/' # ensure trailing slash 
     return exists(run_path + "SampleSheet_I10.csv")
 
+def _in_flags(flags):
+    return lambda char : any([True if char in flag else False for flag in flags])
+
+def get_index_from_flags(flags):
+    return flags[flags.index('-i') + 1]
+
 def qc_run(run_path: str, flags: str):
     if samplesheet_exists(run_path):
         df = parse_run_metrics(run_path)
@@ -108,11 +114,12 @@ def qc_run(run_path: str, flags: str):
             return
         run_name = get_run_name(run_path)
 
-        multiqc_flag = 'm' in flags
-        megaqc_flag = 'M' in flags
-        azure_upload_flag = 'u' in flags
-        skip_flag = 's' in flags
-        index_flag = 'i' in flags
+        in_flags = _in_flags(flags)
+        multiqc_flag = in_flags('m')
+        megaqc_flag = in_flags('M')
+        azure_upload_flag = in_flags('u')
+        skip_flag = in_flags('s')
+        index_flag = in_flags('i')
         DEFAULT_INDEX = "I10"
 
         index = get_index_from_flags(flags) if index_flag else DEFAULT_INDEX
@@ -134,8 +141,7 @@ def qc_run(run_path: str, flags: str):
 def azure_upload(run_name):
     print("azure upload placeholder")
 
-def get_index_from_flags(flags):
-    return flags[flags.index('-i') + 1]
+
 
 if __name__ == "__main__":
     # ex: python3 bcl-qc.py -u -m ~/221013_A01718_0014_AHNYGGDRX2
