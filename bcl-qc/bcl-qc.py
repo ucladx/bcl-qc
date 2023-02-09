@@ -122,7 +122,7 @@ def qc_run(run_path: str, flags: str):
         index_flag = in_flags('i')
         DEFAULT_INDEX = "I10"
 
-        index = get_index_from_flags(flags) if index_flag else DEFAULT_INDEX
+        index = DEFAULT_INDEX
 
         if index_flag:
             index = get_index_from_flags(flags)
@@ -132,7 +132,7 @@ def qc_run(run_path: str, flags: str):
             azure_upload(run_name)
         if multiqc_flag:
             occ_pf_plot(df, run_path)
-            call(["bash", "multiqc.sh", run_name])
+            call(["bash", "multiqc.sh", index, run_name])
         if megaqc_flag:
             call(["bash", "megaqc.sh", run_name])
     else: # TODO generate samplesheet
