@@ -106,15 +106,21 @@ def qc_run(run_path: str, flags: str):
             print("Unable to parse Interop files\n",
                   "Could not generate % Occupied x % Pass Filter graph.")
             return
-
         run_name = get_run_name(run_path)
+
         multiqc_flag = 'm' in flags
         megaqc_flag = 'M' in flags
         azure_upload_flag = 'u' in flags
         skip_flag = 's' in flags
+        index_flag = 'i' in flags
+        DEFAULT_INDEX = "I10"
 
+        index = get_index_from_flags(flags) if index_flag else DEFAULT_INDEX
+
+        if index_flag:
+            index = get_index_from_flags(flags)
         if not skip_flag:
-            call(["bash", "bcl-qc.sh", run_name])
+            call(["bash", "bcl-qc.sh", index, run_name])
         if azure_upload_flag:
             azure_upload(run_name)
         if multiqc_flag:
@@ -123,13 +129,16 @@ def qc_run(run_path: str, flags: str):
         if megaqc_flag:
             call(["bash", "megaqc.sh", run_name])
     else: # TODO generate samplesheet
-        print(f"SampleSheet_I10.csv not found in {run_path}")
+        print(f"SampleSheet_{index}.csv not found in {run_path}")
 
 def azure_upload(run_name):
     print("azure upload placeholder")
 
+def get_index_from_flags(flags):
+    return flags[flags.index('-i') + 1]
+
 if __name__ == "__main__":
     # ex: python3 bcl-qc.py -u -m ~/221013_A01718_0014_AHNYGGDRX2
     run_path = sys.argv[-1]
-    flags = ' '.join(sys.argv[1:-1])
+    flags = sys.argv[1:-1]
     qc_run(run_path, flags)
