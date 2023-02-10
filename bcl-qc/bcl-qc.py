@@ -101,8 +101,8 @@ def samplesheet_exists(run_path, index):
     if run_path[-1] != '/': run_path += '/' # ensure trailing slash 
     return exists(run_path + f"SampleSheet_{index}.csv")
 
-def _in_flags(flags):
-    return lambda char : any([True if char in flag else False for flag in flags])
+def _is_in(list_of_strings):
+    return lambda x : any([True if x in string else False for string in list_of_strings])
 
 def get_index_from_flags(flags):
     if '-i' in flags:
@@ -119,6 +119,7 @@ def qc_run(run_path: str, flags: str):
                   "Could not generate % Occupied x % Pass Filter graph.")
             return
         run_name = get_run_name(run_path)
+        is_in_flags = _is_in(flags)
 
         in_flags = _in_flags(flags)
         multiqc_flag = in_flags('m')
@@ -127,14 +128,14 @@ def qc_run(run_path: str, flags: str):
         skip_flag = in_flags('s')
 
         if not skip_flag:
-            call(["bash", "bcl-qc.sh", index, run_name])
+            call(["bash", "~/scripts/bcl-qc.sh", index, run_name])
         if azure_upload_flag:
             azure_upload(run_name)
         if multiqc_flag:
             occ_pf_plot(df, run_path)
-            call(["bash", "multiqc.sh", index, run_name])
+            call(["bash", "~/scripts/bcl-qc.sh", index, run_name])
         if megaqc_flag:
-            call(["bash", "megaqc.sh", run_name])
+            call(["bash", "~/scripts/bcl-qc.sh", run_name])
     else: # TODO generate samplesheet
         print(f"SampleSheet_{index}.csv not found in {run_path}")
 
