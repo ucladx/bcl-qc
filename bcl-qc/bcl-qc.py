@@ -8,6 +8,8 @@ from seaborn import scatterplot
 from interop import py_interop_run_metrics, py_interop_run, py_interop_table
 from os.path import exists
 
+DEFAULT_SS_INDEX = "I10" # default sample sheet index, e.g. I10, I8N2
+
 def parse_run_metrics(run_path: str):
     """
     Returns a DataFrame of `interop_imaging_table` or returns None if no data is found.
@@ -95,18 +97,22 @@ def get_run_name(run_path: str):
     """
     return [x for x in run_path.split('/') if x][-1]
 
-def samplesheet_exists(run_path):
+def samplesheet_exists(run_path, index):
     if run_path[-1] != '/': run_path += '/' # ensure trailing slash 
-    return exists(run_path + "SampleSheet_I10.csv")
+    return exists(run_path + f"SampleSheet_{index}.csv")
 
 def _in_flags(flags):
     return lambda char : any([True if char in flag else False for flag in flags])
 
 def get_index_from_flags(flags):
-    return flags[flags.index('-i') + 1]
+    if '-i' in flags:
+        return flags[flags.index('-i') + 1]
+    else:
+        return DEFAULT_SS_INDEX
 
 def qc_run(run_path: str, flags: str):
-    if samplesheet_exists(run_path):
+    index = get_index_from_flags(flags)
+    if samplesheet_exists(run_path, index):
         df = parse_run_metrics(run_path)
         if df is None:
             print("Unable to parse Interop files\n",
@@ -119,13 +125,7 @@ def qc_run(run_path: str, flags: str):
         megaqc_flag = in_flags('M')
         azure_upload_flag = in_flags('u')
         skip_flag = in_flags('s')
-        index_flag = in_flags('i')
-        DEFAULT_INDEX = "I10"
 
-        index = DEFAULT_INDEX
-
-        if index_flag:
-            index = get_index_from_flags(flags)
         if not skip_flag:
             call(["bash", "bcl-qc.sh", index, run_name])
         if azure_upload_flag:
