@@ -7,8 +7,7 @@ from pandas import DataFrame
 from seaborn import scatterplot
 from interop import py_interop_run_metrics, py_interop_run, py_interop_table
 from os.path import exists
-
-DEFAULT_SS_INDEX = "I10" # default sample sheet index, e.g. I10, I8N2
+from passes import compute_passes, call_pass
 
 def parse_run_metrics(run_path: str):
     """
@@ -60,11 +59,15 @@ def parse_run_metrics(run_path: str):
 
     return DataFrame(data, columns=headers)
 
-def occ_pf_plot(df: DataFrame, run_path: str):
+def save_occ_pf_plot(run_path: str):
     """
-    Given an interop imaging table dataframe,
-    saves a % Occupied x % Pass Filter scatter to `SAVE_DIR`.
+    Saves a % Occupied x % Pass Filter scatter to `SAVE_DIR`.
     """
+
+    df = parse_run_metrics(run_path)
+        if df is None:
+            print("Unable to parse Interop files.")
+            return
 
     x = "% Occupied"
     y = "% Pass Filter"
@@ -83,8 +86,7 @@ def occ_pf_plot(df: DataFrame, run_path: str):
         plt.legend(title=view, bbox_to_anchor=[1.2, 0.9])
         plt.tight_layout()
 
-        run_name = get_run_name(run_path)
-        save_dir = f"/mnt/pns/bams/{run_name}/"
+        save_dir = f"/mnt/pns/runs/{get_run_name(run_path)}/"
         image_path = save_dir + f"occ_pf_{view.lower()}_mqc.jpg"
         print("saving occ pf graph to " + image_path)
         plt.savefig(image_path, dpi=300)
@@ -97,52 +99,34 @@ def get_run_name(run_path: str):
     """
     return [x for x in run_path.split('/') if x][-1]
 
-def samplesheet_exists(run_path, index):
+def samplesheet_exists(run_info):
+    run_path = run_info.run_path
     if run_path[-1] != '/': run_path += '/' # ensure trailing slash 
-    return exists(run_path + f"SampleSheet_{index}.csv")
+    return exists(run_path + f"SampleSheet_{run_info.barcode}.csv")
 
-def _is_in(list_of_strings):
-    return lambda x : any([True if x in string else False for string in list_of_strings])
+DEFAULT_BARCODE_FORMAT = "I10" # default sample sheet barcode_format, e.g. I10, I8N2
 
-def get_index_from_flags(flags):
+def get_barcode_format(flags):
     if '-i' in flags:
-        return flags[flags.index('-i') + 1]
+        return flags[flags.index('-i') + 1] # next argument after "-i"
     else:
-        return DEFAULT_SS_INDEX
+        return DEFAULT_BARCODE_FORMAT
 
 def qc_run(run_path: str, flags: str):
-    index = get_index_from_flags(flags)
-    if samplesheet_exists(run_path, index):
-        df = parse_run_metrics(run_path)
-        if df is None:
-            print("Unable to parse Interop files\n",
-                  "Could not generate % Occupied x % Pass Filter graph.")
-            return
-        run_name = get_run_name(run_path)
-        is_in_flags = _is_in(flags)
-
-        in_flags = _in_flags(flags)
-        multiqc_flag = in_flags('m')
-        megaqc_flag = in_flags('M')
-        azure_upload_flag = in_flags('u')
-        skip_flag = in_flags('s')
-
-        if not skip_flag:
-            call(["bash", "~/scripts/bcl-qc.sh", index, run_name])
-        if azure_upload_flag:
-            azure_upload(run_name)
-        if multiqc_flag:
-            occ_pf_plot(df, run_path)
-            call(["bash", "~/scripts/bcl-qc.sh", index, run_name])
-        if megaqc_flag:
-            call(["bash", "~/scripts/bcl-qc.sh", run_name])
-    else: # TODO generate samplesheet
-        print(f"SampleSheet_{index}.csv not found in {run_path}")
-
-def azure_upload(run_name):
-    print("azure upload placeholder")
-
-
+    run_info = RunInfo(flags, run_path)
+    print(f"bcl-qc on {run_path}:\nflags: {flags}\nbarcode: {run_info.barcode}")
+    if samplesheet_exists(run_info):
+        for pass_name in compute_passes(flags):
+            if pass_name + "_pass" in dir(): # if a custom pass function is defined, call it first
+                call_pass(pass_name, run_info)
+            else if exists("~/scripts/{pass_name}.sh"): # otherwise look for a script
+                call(["bash", "~/scripts/{pass_name}.sh", run_info.barcode, run_info.run_name])
+            else:
+                print(f"I couldn't find a way to run {pass_name}.\n"
+                       "Either define a function called {pass_name}_pass in passes.py,\n"
+                       "or create a bash script called {pass_name}.sh in  ~/scripts/")
+    else: # TODO generate SampleSheet if not found
+        print(f"SampleSheet_{run_info.barcode}.csv not found in {run_path}")
 
 if __name__ == "__main__":
     # ex: python3 bcl-qc.py -u -m ~/221013_A01718_0014_AHNYGGDRX2
