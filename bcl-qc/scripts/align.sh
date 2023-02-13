@@ -3,7 +3,7 @@ run_name=$2
 EXONS=/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed
 
 echo "creating bam dirs"
-cut -f2 -d, /staging/hot/reads/$run_name/$index/Reports/fastq_list.csv | grep -v ^RGSM | sort -u | xargs -L1 -I{} mkdir -p /mnt/pns/bams/$run_name/{}
+cut -f2 -d, /staging/hot/reads/$run_name/$index/Reports/fastq_list.csv | grep -v ^RGSM | sort -u | xargs -L1 -I{} mkdir -p -v /mnt/pns/bams/$run_name/{}
 
 echo "running alignment"
 cut -f2 -d, /staging/hot/reads/$run_name/$index/Reports/fastq_list.csv | grep -v ^RGSM | sort -u | xargs -L1 -I{} \
