@@ -6,38 +6,52 @@ from numpy import zeros, float32
 from subprocess import call
 from os.path import exists
 
-# Main passes run by default
+# Main passes are run by default
 MAIN_PASSES = [
-    "demux", # bash
-    "align", # bash
+    "demux",
+    "align",
     ]
 
+# Aux passes are defined with a flag that can be given to enable them
 AUX_PASSES = {
-    'm' : "multiqc", # bash
-    'M' : "megaqc", # bash
-    'a' : "azure", # py
+    'm' : "multiqc",
+    'M' : "megaqc",
+    'a' : "azure",
 }
-
-AUX_PASS_NAMES = AUX_PASSES.keys()
+AUX_PASS_FLAGS = AUX_PASSES.keys()
 
 DEFAULT_BARCODE_FORMAT = "I10" # default sample sheet barcode_format, e.g. I10, I8N2
+DEFAULT_BED_PATH = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
 
 def get_barcode_format(flags):
-    if '-i' in flags:
-        return flags[flags.index('-i') + 1] # next argument after "-i"
-    else:
-        return DEFAULT_BARCODE_FORMAT
+    barcode_format = DEFAULT_BARCODE_FORMAT
+    custom_format = get_flag_args('i', flags)
+    if custom_format: barcode_format = custom_format[0]
+    return barcode_format
+
+def get_run_name(run_path: str):
+    """
+    Given '.../221013_A01718_0014_AHNYGGDRX2/',
+    returns '221013_A01718_0014_AHNYGGDRX2'
+    """
+    return [x for x in run_path.split('/') if x][-1]
 
 class RunInfo:
-    def __init__(self, flags, run_path):
-        self.barcode = get_barcode_format(flags)
+    def __init__(self, run_path, flags):
         self.run_path = run_path
+        self.flags = flags
+        self.barcode = get_barcode_format(flags)
         self.run_name = get_run_name(run_path)
 
 def azure_pass(run_info):
-    print("Azure Upload\n-------------------------")
-    # azure upload logic goes here
+    print("TEST Azure Upload\n-------------------------")
     return
+
+def align_pass(run_info):
+    bed_path = DEFAULT_BED_PATH
+    user_bed_path = get_flag_args('b', run_info.flags)
+    if user_bed_path: bed_path = user_bed_path
+    call(["bash", "~/scripts/align.sh", run_info.barcode, run_info.run_name, bed_path])
 
 def parse_run_metrics(run_path: str):
     """
@@ -89,13 +103,6 @@ def parse_run_metrics(run_path: str):
 
     return DataFrame(data, columns=headers)
 
-def get_run_name(run_path: str):
-    """
-    Given '.../221013_A01718_0014_AHNYGGDRX2/',
-    returns '221013_A01718_0014_AHNYGGDRX2'
-    """
-    return [x for x in run_path.split('/') if x][-1]
-
 def save_occ_pf_plot(run_path: str):
     """
     Saves a % Occupied x % Pass Filter scatter to `SAVE_DIR`.
@@ -144,29 +151,38 @@ def get_flag_args(char, flags):
                 return [arg for arg in flags[start:end]]
     return []
 
+def handle_skip_flag(passes, flags):
+    new_passes = passes
+    for arg in get_flag_args('s', flags):
+        if arg == "all":
+            return []
+        elif arg == "main":
+            for pass_name in MAIN_PASSES: new_passes.remove(pass_name)
+        else:
+            new_passes.remove(arg)
+    return new_passes
+
 def compute_passes(flags):
     passes = MAIN_PASSES
-    all_flags = ''.join(flags[0:-1])
-    for aux_pass_flag in AUX_PASS_NAMES:
-        if aux_pass_flag in all_flags: passes += AUX_PASSES[aux_pass_flag]
-    if 's' in all_flags:
-        for arg in get_flag_args('s', flags):
-            if arg == "all":
-                passes = []
-            elif arg == "main":
-                for pass_name in MAIN_PASSES:
-                    passes.remove(pass_name)
-            else:
-                passes.remove(arg)
+    found_flags = ''.join(flags)
+    for flag in AUX_PASS_FLAGS:
+        if flag in found_flags: passes += AUX_PASSES[flag]
+    if 's' in found_flags: # skip passes by name
+        passes = handle_skip_flag(passes, flags)
     return passes
 
 def exec_pass(pass_name, run_info):
     if pass_name + "_pass" in dir(): # if a custom pass function is defined, call it first
         pass_function = globals()[pass_name + "_pass"] # scary --- we pull this function out of the global namespace
-        pass_function(run_info.barcode, run_info.run_path)
+        pass_function(run_info)
     elif exists("~/scripts/{pass_name}.sh"): # otherwise look for a script
         call(["bash", "~/scripts/{pass_name}.sh", run_info.barcode, run_info.run_name])
     else:
         print(f"I couldn't find a way to execute pass: {pass_name}.\n"
                 "Either define a function called {pass_name}_pass in passes.py,\n"
                 "or create a bash script called {pass_name}.sh in ~/scripts/")
+
+def exec_passes(run_path, flags):
+    run_info = RunInfo(flags, run_path)
+    for pass_name in compute_passes(flags):
+        exec_pass(pass_name, run_info)
