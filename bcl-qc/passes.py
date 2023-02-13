@@ -10,7 +10,7 @@ from os.path import exists
 MAIN_PASSES = [
     "demux",
     "align",
-    ]
+]
 
 # Aux passes are defined with a flag that can be given to enable them
 AUX_PASSES = {
@@ -23,9 +23,9 @@ AUX_PASS_FLAGS = AUX_PASSES.keys()
 DEFAULT_BARCODE_FORMAT = "I10" # default sample sheet barcode_format, e.g. I10, I8N2
 DEFAULT_BED_PATH = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
 
-def get_barcode_format(flags):
+def get_barcode_format(args):
     barcode_format = DEFAULT_BARCODE_FORMAT
-    custom_format = get_flag_args('i', flags)
+    custom_format = get_flag_args('i', args)
     if custom_format: barcode_format = custom_format[0]
     return barcode_format
 
@@ -37,11 +37,17 @@ def get_run_name(run_path: str):
     return [x for x in run_path.split('/') if x][-1]
 
 class RunInfo:
-    def __init__(self, run_path, flags):
+    def __init__(self, run_path, args):
         self.run_path = run_path
-        self.flags = flags
-        self.barcode = get_barcode_format(flags)
+        self.args = args
+        self.barcode = get_barcode_format(args)
         self.run_name = get_run_name(run_path)
+
+class PassInfo:
+    def __init__(self, args, pass_name, pass_function):
+        self.args = args
+        self.pass_name = pass_name
+        self.pass_function = pass_function
 
 def azure_pass(run_info):
     print("TEST Azure Upload\n-------------------------")
@@ -49,8 +55,8 @@ def azure_pass(run_info):
 
 def align_pass(run_info):
     bed_path = DEFAULT_BED_PATH
-    user_bed_path = get_flag_args('b', run_info.flags)
-    if user_bed_path: bed_path = user_bed_path
+    user_bed_path = get_flag_args('b', run_info.args)
+    if user_bed_path: bed_path = user_bed_path[0]
     call(["bash", "~/scripts/align.sh", run_info.barcode, run_info.run_name, bed_path])
 
 def parse_run_metrics(run_path: str):
@@ -139,50 +145,71 @@ def save_occ_pf_plot(run_path: str):
 def multiqc_pass(run_info):
     print("MultiQC\n-------------------------")
     save_occ_pf_plot(run_info.run_path)
-    call(["bash", "~/scripts/multiqc.sh", run_info.barcode, run_info.run_name])
+    call(["bash", f"~/scripts/multiqc.sh", run_info.barcode, run_info.run_name])
 
-def get_flag_args(char, flags):
+def is_flag(arg):
+    return arg.startswith('-')
+
+def get_flag_args(char, args):
     flag = "-" + char
-    if flag in flags:
-        start = flags.index(flag) + 1
-        for ele in flags[start:]:
-            if ele.startswith('-'):
-                end = flags.index(ele)
-                return [arg for arg in flags[start:end]]
+    if flag in args:
+        start = args.index(flag) + 1
+        if len(args[start:]) == 1:
+            return args[start:]
+        else:
+            for arg in args[start:]:
+                if is_flag(arg):
+                    end = args.index(arg)
+                    return args[start:end]
     return []
 
-def handle_skip_flag(passes, flags):
+def find_flags(args):
+    return [arg for arg in args if is_flag(arg)]
+
+def handle_skip_flag(passes, skipped_passes):
     new_passes = passes
-    for arg in get_flag_args('s', flags):
-        if arg == "all":
+    for pass_name in skipped_passes:
+        if pass_name == "all":
             return []
-        elif arg == "main":
+        elif pass_name == "main":
             for pass_name in MAIN_PASSES: new_passes.remove(pass_name)
         else:
-            new_passes.remove(arg)
+            new_passes.remove(pass_name)
     return new_passes
 
-def compute_passes(flags):
+def compute_passes(args):
     passes = MAIN_PASSES
-    found_flags = ''.join(flags)
+    flags = find_flags(args)
     for flag in AUX_PASS_FLAGS:
-        if flag in found_flags: passes += AUX_PASSES[flag]
-    if 's' in found_flags: # skip passes by name
-        passes = handle_skip_flag(passes, flags)
+        if flag in flags: passes += [AUX_PASSES[flag]]
+    # skip passes by name
+    skipped_passes = get_flag_args('s', args)
+    if skipped_passes:
+        passes = handle_skip_flag(passes, skipped_passes)
+    print("passes to run: ", passes)
     return passes
 
-def exec_pass(pass_name, run_info):
-    if pass_name + "_pass" in dir(): # if a custom pass function is defined, call it first
-        pass_function = globals()[pass_name + "_pass"] # scary --- we pull this function out of the global namespace
-        pass_function(run_info)
-    elif exists("~/scripts/{pass_name}.sh"): # otherwise look for a script
-        call(["bash", "~/scripts/{pass_name}.sh", run_info.barcode, run_info.run_name])
-    else:
-        print(f"I couldn't find a way to execute pass: {pass_name}.\n"
-                "Either define a function called {pass_name}_pass in passes.py,\n"
-                "or create a bash script called {pass_name}.sh in ~/scripts/")
+def get_custom_pass(pass_name):
+    custom_pass_name = pass_name + "_pass"
+    for name, fx in globals().items():
+        if name == custom_pass_name:
+            if callable(fx) and fx.__module__ == __name__:
+                return fx
+    return None
 
-def exec_passes(run_path, flags):
-    run_info = RunInfo(flags, run_path)
-    for pass_name in compute_passes(flags):
-        exec_pass(pass_name, run_info)
+def execute(pass_name, run_info):
+    pass_function = get_custom_pass(pass_name)
+    if pass_function: # if a custom pass function is defined, call it first
+        pass_function(run_info)
+    elif exists(f"~/scripts/{pass_name}.sh"): # otherwise look for a script
+        call(["bash", f"~/scripts/{pass_name}.sh", run_info.barcode, run_info.run_name])
+    else:
+        print(f"I couldn't find a way to execute pass: {pass_name}\n"
+                f"Either define a function called {pass_name}_pass in passes.py,\n"
+                f"or create a bash script at ~/scripts/{pass_name}.sh")
+
+def execute_passes(run_path, args):
+    run_info = RunInfo(run_path, args)
+    for pass_name in compute_passes(args):
+        print(f"Running BCL-QC pass: {pass_name}")
+        execute(pass_name, run_info)
