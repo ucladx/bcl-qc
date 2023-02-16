@@ -136,7 +136,7 @@ def save_occ_pf_plot(run_path: str):
         plt.legend(title=view, bbox_to_anchor=[1.2, 0.9])
         plt.tight_layout()
 
-        save_dir = f"/mnt/pns/runs/{get_run_name(run_path)}/"
+        save_dir = f"/mnt/pns/bams/{get_run_name(run_path)}/"
         image_path = save_dir + f"occ_pf_{view.lower()}_mqc.jpg"
         print("saving occ pf graph to " + image_path)
         plt.savefig(image_path, dpi=300)
