@@ -145,7 +145,7 @@ def save_occ_pf_plot(run_path: str):
 def multiqc_pass(run_info):
     print("MultiQC\n-------------------------")
     save_occ_pf_plot(run_info.run_path)
-    call(["bash", f"~/scripts/multiqc.sh", run_info.barcode, run_info.run_name])
+    call(["bash", f"~/scripts/multiqc.sh", run_info.run_name])
 
 def is_flag(arg):
     return arg.startswith('-')
