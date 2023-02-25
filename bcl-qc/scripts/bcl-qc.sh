@@ -20,7 +20,7 @@ cut -f2 -d, /staging/hot/reads/$run_name/$index/Reports/fastq_list.csv | grep -v
 echo "running alignment"
 cut -f2 -d, /staging/hot/reads/$run_name/$index/Reports/fastq_list.csv | grep -v ^RGSM | sort -u | xargs -L1 -I{} \
 dragen --enable-map-align true --enable-map-align-output true --output-format BAM \
---enable-duplicate-marking true --generate-sa-tags true --enable-sort true \
+--enable-duplicate-marking true --generate-sa-tags true --enable-sort true --soft-read-trimmers polyg,quality --trim-min-quality 2 \
 --ref-dir /staging/human/reference/hg38_alt_masked_graph_v2 --intermediate-results-dir /staging/tmp  \
 --qc-coverage-tag-1 target_bed --qc-coverage-region-1 $EXONS  --qc-coverage-reports-1 cov_report --qc-coverage-ignore-overlaps true \
 --enable-variant-caller true --vc-combine-phased-variants-distance 6 --vc-emit-ref-confidence GVCF --enable-hla true \
