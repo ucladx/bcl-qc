@@ -1,5 +1,12 @@
+#!/bin/bash
+set -eo pipefail
+
 index=$1
 run_name=$2
+
+if [ $# -ne 2 ]; then
+  echo "Usage: demux.sh <index> <run_name>"
+fi
 
 echo "creating reads folder on dragen local disk"
 mkdir /staging/hot/reads/$run_name

@@ -1,6 +1,13 @@
+#!/bin/bash
+set -eo pipefail
+
 index=$1
 run_name=$2
 bed=$3
+
+if [ $# -ne 3 ]; then
+  echo "Usage: bash align.sh <index> <run_name> <exon_bed>"
+fi
 
 echo "creating bam dirs"
 cut -f2 -d, /staging/hot/reads/$run_name/$index/Reports/fastq_list.csv | grep -v ^RGSM | sort -u | xargs -L1 -I{} mkdir -p -v /mnt/pns/bams/$run_name/{}
