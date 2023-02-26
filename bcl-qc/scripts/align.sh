@@ -7,6 +7,7 @@ bed=$3
 
 if [ $# -ne 3 ]; then
   echo "Usage: bash align.sh <index> <run_name> <exon_bed>"
+  exit 1
 fi
 
 echo "creating bam dirs"
