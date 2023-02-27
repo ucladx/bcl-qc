@@ -9,8 +9,13 @@ if [ $# -ne 2 ]; then
   exit 1
 fi
 
-echo "creating reads folder on dragen local disk"
-mkdir /staging/hot/reads/$run_name
+fastq_dir="/staging/hot/reads/$run_name"
+if [ -d $fastq_dir ]; then
+  echo "Using existing folder for this runs's FASTQs: $fastq_dir"
+else
+  echo "Creating new folder for this run's FASTQs: $fastq_dir"
+  mkdir $fastq_dir
+fi
 
 echo "running demux"
 dragen --bcl-conversion-only true --bcl-use-hw false --bcl-only-matched-reads true \
