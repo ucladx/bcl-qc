@@ -57,7 +57,7 @@ def align_pass(run_info):
     bed_path = DEFAULT_BED_PATH
     user_bed_path = get_flag_args('b', run_info.args)
     if user_bed_path: bed_path = user_bed_path[0]
-    call(["bash", "/home/iatol/bcl-qc/bcl-qc/scripts/align.sh", run_info.barcode, run_info.run_name, bed_path])
+    call(["bash", "/home/iatol/bclqc/bcl-qc/scripts/align.sh", run_info.barcode, run_info.run_name, bed_path])
 
 def parse_run_metrics(run_path: str):
     """
@@ -145,7 +145,7 @@ def save_occ_pf_plot(run_path: str):
 def multiqc_pass(run_info):
     print("MultiQC\n-------------------------")
     save_occ_pf_plot(run_info.run_path)
-    call(["bash", f"/home/iatol/bcl-qc/bcl-qc/scripts/multiqc.sh", run_info.run_name])
+    call(["bash", f"/home/iatol/bclqc/bcl-qc/scripts/multiqc.sh", run_info.run_name])
 
 def is_flag(arg):
     return arg.startswith('-')
@@ -202,11 +202,11 @@ def execute(pass_name, run_info):
     if pass_function: # if a custom pass function is defined, call it first
         pass_function(run_info)
     elif exists(f"~/scripts/{pass_name}.sh"): # otherwise look for a script
-        call(["bash", f"/home/iatol/bcl-qc/bcl-qc/scripts/{pass_name}.sh", run_info.barcode, run_info.run_name])
+        call(["bash", f"/home/iatol/bclqc/bcl-qc/scripts/{pass_name}.sh", run_info.barcode, run_info.run_name])
     else:
         print(f"I couldn't find a way to execute pass: {pass_name}\n"
                 f"Either define a function called {pass_name}_pass in passes.py,\n"
-                f"or create a bash script at /home/iatol/bcl-qc/bcl-qc/scripts/{pass_name}.sh")
+                f"or create a bash script at /home/iatol/bclqc/bcl-qc/scripts/{pass_name}.sh")
 
 def execute_passes(run_path, args):
     run_info = RunInfo(run_path, args)
