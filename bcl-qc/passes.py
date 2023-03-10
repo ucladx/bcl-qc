@@ -201,7 +201,7 @@ def execute(pass_name, run_info):
     pass_function = get_custom_pass(pass_name)
     if pass_function: # if a custom pass function is defined, call it first
         pass_function(run_info)
-    elif exists(f"~/scripts/{pass_name}.sh"): # otherwise look for a script
+    elif exists(f"/home/iatol/bclqc/bcl-qc/scripts/{pass_name}.sh"): # otherwise look for a script
         call(["bash", f"/home/iatol/bclqc/bcl-qc/scripts/{pass_name}.sh", run_info.barcode, run_info.run_name])
     else:
         print(f"I couldn't find a way to execute pass: {pass_name}\n"
