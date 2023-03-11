@@ -88,6 +88,6 @@ def execute_pass(pass_name, run_info):
                 f"or create a bash script at {run_info.exec_path}/scripts/{pass_name}.sh")
 
 def execute_passes(run_path, args):
-    run_info = RunInfo(run_path)
+    run_info = RunInfo(run_path, args)
     for pass_name in compute_passes(args):
         execute_pass(pass_name, run_info)
