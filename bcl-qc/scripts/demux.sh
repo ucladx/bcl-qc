@@ -5,7 +5,7 @@ index=$1
 run_name=$2
 
 if [ $# -ne 2 ]; then
-  echo "Usage: demux.sh <index> <run_name>"
+  echo "Usage: bash demux.sh <index> <run_name>"
   exit 1
 fi
 
