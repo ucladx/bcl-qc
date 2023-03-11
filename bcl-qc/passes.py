@@ -167,7 +167,7 @@ def find_flags(args):
     return [arg for arg in args if is_flag(arg)]
 
 def handle_skip_flag(passes, skipped_passes):
-    new_passes = passes
+    new_passes = passes.copy()
     for pass_name in skipped_passes:
         if pass_name.upper() == "ALL":
             return []
@@ -178,7 +178,7 @@ def handle_skip_flag(passes, skipped_passes):
     return new_passes
 
 def compute_passes(args):
-    passes = MAIN_PASSES
+    passes = MAIN_PASSES.copy()
     flags = find_flags(args)
     for flag in AUX_PASS_FLAGS:
         if flag in flags: passes += [AUX_PASSES[flag]]
