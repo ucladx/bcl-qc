@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import os
+import re
 from pandas import DataFrame
 from seaborn import scatterplot
 from interop import py_interop_run_metrics, py_interop_run, py_interop_table
@@ -20,8 +22,20 @@ AUX_PASSES = {
 }
 AUX_PASS_FLAGS = AUX_PASSES.keys()
 
+# TODO just get all barcode formats based on SampleSheet_IDX existing in run folder
 DEFAULT_BARCODE_FORMAT = "I10" # default sample sheet barcode_format, e.g. I10, I8N2
 DEFAULT_BED_PATH = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
+
+
+def is_samplesheet(file_name):
+    return re.search("^SampleSheet.*", file_name)
+
+def get_barcode(file_name):
+    # assumes samplesheet format is "SampleSheet_{index}.csv"
+    return file_name[12:-4]
+
+def get_barcodes(run_path):
+    return [get_barcode(f) for f in os.listdir(run_path) if is_samplesheet(f)]
 
 def get_barcode_format(args):
     barcode_format = DEFAULT_BARCODE_FORMAT
@@ -40,7 +54,7 @@ class RunInfo:
     def __init__(self, run_path, args):
         self.run_path = run_path
         self.args = args
-        self.barcode = get_barcode_format(args)
+        self.barcodes = get_barcode_format(args)
         self.run_name = get_run_name(run_path)
 
 class PassInfo:
