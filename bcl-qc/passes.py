@@ -161,10 +161,13 @@ def get_flag_args(char, args):
                 if is_flag(arg):
                     end = args.index(arg)
                     return args[start:end]
+                elif arg == args[-1]:
+                    end = args.index(arg) + 1
+                    return args[start:end]
     return []
 
 def find_flags(args):
-    return [arg for arg in args if is_flag(arg)]
+    return [arg[1] for arg in args if is_flag(arg)]
 
 def handle_skip_flag(passes, skipped_passes):
     new_passes = passes.copy()
