@@ -1,5 +1,4 @@
 RUN_DIR=$1
-echo "Run_watcher!"
 inotifywait -q -m -e create $RUN_DIR | while read DIRECTORY EVENT FILE; do
     if [[ $EVENT == 'CREATE' ]] && [[ $FILE == 'CopyComplete.txt' ]]; then
         parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )

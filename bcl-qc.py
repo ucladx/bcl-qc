@@ -28,7 +28,6 @@ def qc_run(run_path: str, args: str):
 
 if __name__ == "__main__":
     # absolute path to a specific run's output directory
-    print("bcl-qc.py!")
     # run_path = sys.argv[-1]
     # if run_path[-1] != '/':  run_path += '/'
     # args = sys.argv[1:-1]
