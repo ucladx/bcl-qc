@@ -1,9 +1,8 @@
 import os
 import re
 import sys
-
+import pandas as pd
 import matplotlib.pyplot as plt
-from pandas import DataFrame
 from seaborn import scatterplot
 from interop import py_interop_run_metrics, py_interop_run, py_interop_table
 from numpy import zeros, float32
@@ -32,6 +31,10 @@ def get_exec_path():
     returns '/home/iatol'
     """
     return '/'.join(sys.argv[0].split('/')[:-1])
+
+def get_sample_ids(fastq_list):
+    fastq_list_df = pd.read_csv(fastq_list)
+    return set(fastq_list_df['RGSM'])
 
 def parse_run_metrics(run_path: str):
     """
@@ -81,7 +84,7 @@ def parse_run_metrics(run_path: str):
         run_metrics, columns, row_offsets, data.ravel()
     )
 
-    return DataFrame(data, columns=headers)
+    return pd.DataFrame(data, columns=headers)
 
 def save_occ_pf_plot(run_path: str):
     """

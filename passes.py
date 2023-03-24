@@ -13,7 +13,6 @@ MAIN_PASSES = [
 
 # Aux passes are defined with a flag that can be given to enable them
 AUX_PASSES = {
-    # 'm' : "multiqc",
     'M' : "megaqc",
     'a' : "azure",
 }
@@ -21,25 +20,36 @@ AUX_PASSES = {
 class RunInfo:
     def __init__(self, run_path, args):
         user_bed_path = get_flag_args('b', args)
-
         self.run_path = run_path
         self.indices = get_indices(run_path)
         self.run_name = get_run_name(run_path)
         self.bed_path = user_bed_path[0] if user_bed_path else DEFAULT_BED_PATH
-        self.exec_path = get_exec_path()
-        # self.output_path = 
 
 def azure_pass(run_info):
     print("TEST Azure Upload\n-------------------------")
     return
 
 def demux_pass(run_info):
+    run_name = run_info.run_name
     for idx in run_info.indices:
-        call(["bash", f"scripts/demux.sh", idx, run_info.run_name])
+        samplesheet = f"/mnt/pns/runs/{run_name}/SampleSheet_{idx}.csv"
+        fastq_dir = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
+        call(["bash", f"scripts/demux.sh",
+                run_info.run_path,
+                samplesheet,
+                fastq_dir])
 
 def align_pass(run_info):
+    run_name = run_info.run_name
     for idx in run_info.indices:
-        call(["bash", f"scripts/align.sh", idx, run_info.run_name, run_info.bed_path])
+        fastq_list = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
+        for sample_id in get_sample_ids(fastq_list):
+            bam_output = f"/mnt/pns/bams/{run_name}/$sample_id"
+            call(["bash", f"scripts/align.sh",
+                    fastq_list,
+                    bam_output,
+                    run_info.bed_path,
+                    sample_id])
 
 def multiqc_pass(run_info):
     print("MultiQC\n-------------------------")
