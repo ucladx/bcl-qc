@@ -35,16 +35,16 @@ def azure_pass(run_info):
 
 def demux_pass(run_info):
     for idx in run_info.indices:
-        call(["bash", f"{run_info.exec_path}/scripts/demux.sh", idx, run_info.run_name])
+        call(["bash", f"scripts/demux.sh", idx, run_info.run_name])
 
 def align_pass(run_info):
     for idx in run_info.indices:
-        call(["bash", f"{run_info.exec_path}/scripts/align.sh", idx, run_info.run_name, run_info.bed_path])
+        call(["bash", f"scripts/align.sh", idx, run_info.run_name, run_info.bed_path])
 
 def multiqc_pass(run_info):
     print("MultiQC\n-------------------------")
     save_occ_pf_plot(run_info.run_path)
-    call(["bash", f"{run_info.exec_path}/scripts/multiqc.sh", run_info.run_name])
+    call(["bash", f"scripts/multiqc.sh", run_info.run_name])
 
 def handle_skip_flag(passes, skipped_passes):
     new_passes = passes.copy()
@@ -81,12 +81,12 @@ def execute_pass(pass_name, run_info):
     pass_function = get_custom_pass(pass_name)
     if pass_function: # if a custom pass function is defined, call it first
         pass_function(run_info)
-    elif exists(f"{run_info.exec_path}/scripts/{pass_name}.sh"): # otherwise look for a script
-        call(["bash", f"{run_info.exec_path}/scripts/{pass_name}.sh", run_info.run_name])
+    elif exists(f"scripts/{pass_name}.sh"): # otherwise look for a script
+        call(["bash", f"scripts/{pass_name}.sh", run_info.run_name])
     else:
         print(f"I couldn't find a way to execute pass: {pass_name}\n"
                 f"Either define a function called {pass_name}_pass in passes.py,\n"
-                f"or create a bash script at {run_info.exec_path}/scripts/{pass_name}.sh")
+                f"or create a bash script at scripts/{pass_name}.sh")
 
 def execute_passes(run_path, args):
     run_info = RunInfo(run_path, args)
