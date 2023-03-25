@@ -99,8 +99,10 @@ def get_indices_pairs(beaker_df: pd.DataFrame):
     """
     BARCODES_PATH = '../static/illumina_barcodes.txt'
     try:
-        ib_df = pd.read_csv(BARCODES_PATH, sep='\t', header=None)
-        ib_df.columns = ['plate_id', 'index_id', 'sample_id', 'index1', 'index2']
+        ib_df = pd.read_csv(BARCODES_PATH,
+                            sep='\t',
+                            header=None,
+                            colums=['plate_id', 'index_id', 'sample_id', 'index1', 'index2'])
         indices = []
         for beaker_row in beaker_df.itertuples():
             for ib_row in ib_df.itertuples():

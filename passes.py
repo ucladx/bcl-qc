@@ -34,7 +34,7 @@ def demux_pass(run_info):
     for idx in run_info.indices:
         samplesheet = f"/mnt/pns/runs/{run_name}/SampleSheet_{idx}.csv"
         fastq_dir = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
-        call(["bash", f"scripts/demux.sh",
+        call(["bash", "scripts/demux.sh",
                 run_info.run_path,
                 samplesheet,
                 fastq_dir])
@@ -45,7 +45,7 @@ def align_pass(run_info):
         fastq_list = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
         for sample_id in get_sample_ids(fastq_list):
             bam_output = f"/mnt/pns/bams/{run_name}/$sample_id"
-            call(["bash", f"scripts/align.sh",
+            call(["bash", "scripts/align.sh",
                     fastq_list,
                     bam_output,
                     run_info.bed_path,
@@ -56,17 +56,6 @@ def multiqc_pass(run_info):
     save_occ_pf_plot(run_info.run_path)
     call(["bash", f"scripts/multiqc.sh", run_info.run_name])
 
-def handle_skip_flag(passes, skipped_passes):
-    new_passes = passes.copy()
-    for pass_name in skipped_passes:
-        if pass_name.upper() == "ALL":
-            return []
-        elif pass_name.upper() == "MAIN":
-            for pass_name in MAIN_PASSES: new_passes.remove(pass_name)
-        else:
-            new_passes.remove(pass_name)
-    return new_passes
-
 def get_custom_pass(pass_name):
     custom_pass_name = pass_name + "_pass"
     for name, fx in globals().items():
@@ -75,15 +64,26 @@ def get_custom_pass(pass_name):
                 return fx
     return None
 
+# def handle_skip_flag(passes, skipped_passes):
+#     new_passes = passes.copy()
+#     for pass_name in skipped_passes:
+#         if pass_name.upper() == "ALL":
+#             return []
+#         elif pass_name.upper() == "MAIN":
+#             for pass_name in MAIN_PASSES: new_passes.remove(pass_name)
+#         else:
+#             new_passes.remove(pass_name)
+#     return new_passes
+
 def compute_passes(args):
     passes = MAIN_PASSES.copy()
     flags = find_flags(args)
     for flag in AUX_PASSES.keys():
         if flag in flags: passes += [AUX_PASSES[flag]]
     # skip passes by name
-    skipped_passes = get_flag_args('s', args)
-    if skipped_passes:
-        passes = handle_skip_flag(passes, skipped_passes)
+    # skipped_passes = get_flag_args('s', args)
+    # if skipped_passes:
+    #     passes = handle_skip_flag(passes, skipped_passes)
     print("passes to run: ", passes)
     return passes
 
