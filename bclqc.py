@@ -32,7 +32,7 @@ class RunInfo:
         custom_passes = args.get('O')
         self.passes = custom_passes if custom_passes else compute_passes(args)
 
-def demux_cmd(samplesheet, fastq_dir, run_path):
+def demux_cmd(samplesheet, run_path, fastq_output):
     call([
         "dragen",
         "--bcl-conversion-only", "true",
@@ -40,10 +40,10 @@ def demux_cmd(samplesheet, fastq_dir, run_path):
         "--bcl-only-matched-reads", "true",
         "--bcl-input-directory", run_path,
         "--sample-sheet", samplesheet,
-        "--output-directory", fastq_dir
+        "--output-directory", fastq_output,
     ])
 
-def align_cmd(fastq_list, ref_path, bam_output, bed_path, sample_id):
+def align_cmd(fastq_list, sample_id, bed_path, ref_path, bam_output):
     call([
         "dragen",
         "--enable-map-align", "true",
@@ -70,10 +70,10 @@ def align_cmd(fastq_list, ref_path, bam_output, bed_path, sample_id):
         "--output-file-prefix", sample_id
     ])
 
-def multiqc_cmd(reads_input, run_path, bam_output):
+def multiqc_cmd(reads_input, run_path, bam_dir):
     save_occ_pf_plot(run_path)
     # Remove *.wgs_*.csv files
-    for root, _, files in os.walk(bam_output):
+    for root, _, files in os.walk(bam_dir):
         for file in files:
             if ".wgs_" in file and file.endswith(".csv"):
                 os.remove(os.path.join(root, file))
@@ -81,8 +81,8 @@ def multiqc_cmd(reads_input, run_path, bam_output):
         "multiqc",
         "--force",
         "--config", "./config/multiqc_config.yaml",
-        "--outdir", bam_output,
-        bam_output,
+        "--outdir", bam_dir,
+        bam_dir,
         reads_input
     ])
 
@@ -90,8 +90,8 @@ def demux_pass(run_info):
     run_name = run_info.run_name
     for idx in run_info.indices:
         samplesheet = f"/mnt/pns/runs/{run_name}/SampleSheet_{idx}.csv"
-        fastq_dir = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
-        demux_cmd(samplesheet, fastq_dir, run_info.run_path)
+        fastq_output = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
+        demux_cmd(samplesheet, run_info.run_path, fastq_output)
 
 def align_pass(run_info):
     run_name = run_info.run_name
@@ -99,14 +99,14 @@ def align_pass(run_info):
         fastq_list = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
         for sample_id in get_sample_ids(fastq_list):
             bam_output = f"/mnt/pns/bams/{run_name}/{sample_id}"
-            align_cmd(fastq_list, REF_PATH, bam_output, run_info.bed_path, sample_id)
+            align_cmd(fastq_list, sample_id, run_info.bed_path, REF_PATH, bam_output)
 
 def multiqc_pass(run_info):
     print("MultiQC\n-------------------------")
     run_name = run_info.run_name
     bam_dir = f"/mnt/pns/bams/{run_name}"
-    reads_dir = f"/staging/hot/reads/{run_name}"
-    multiqc_cmd(reads_dir, run_info.run_path, bam_dir)
+    reads_input = f"/staging/hot/reads/{run_name}"
+    multiqc_cmd(reads_input, run_info.run_path, bam_dir)
 
 def azure_pass(run_info):
     print("TEST Azure Upload...")
