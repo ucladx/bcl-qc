@@ -138,3 +138,22 @@ def get_flag_args(char, args):
 
 def find_flags(args):
     return [arg[1] for arg in args if is_flag(arg)]
+
+# creates a dict mapping command line flags to their arguments
+# e.x. {'O': ['a', 'b', 'c'], 'B': ['bed.BED']}
+def parse_args(cli_args):
+    args_dict = {}
+    current_flag = ""
+    for arg in cli_args:
+        if arg.startswith('-'):
+            current_flag = arg[1:]
+            args_dict[current_flag] = []
+        else:
+            args_dict[current_flag] += [arg]
+    return args_dict
+
+def get_bed_path(args, default_path):
+    if args:
+        path = args.get('B')
+        return path if path else default_path
+    return default_path

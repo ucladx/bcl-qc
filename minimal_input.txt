@@ -1,3 +1,0 @@
-sample_id	plate_id	well_id	run_id	specimen_site	tissue_source	patient_name	sex	mrn	dob	family_id	provider_name	test_ordered	diagnosis	pre_hyb_conc	pre_hyb_avg_size	final_lib_conc	final_lib_size
-foobar_1	Twist_UDI96_PlateA	C06	220120_A01718_0007	tissue	liver	foobar	male	12344321	12/31/2000	NA	Markman, Mark	Pan-Cancer Solid Tumor NGS Panel	BRCA	30.5	304	30.2	250
-foobar_2	Twist_UDI96_PlateA	C07	220120_A01718_0007	blood	NA	foobar	male	12344321	12/31/2000	NA	Markman, Mark	Pan-Cancer Solid Tumor Comparator	NA	27.5	470	20.2	350
