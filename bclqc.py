@@ -13,7 +13,8 @@ from helpers import *
 #     run detection
 #     Pass manipulation
 
-DEFAULT_BED_PATH = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
+DEFAULT_BED = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
+REF_PATH = "/staging/human/reference/hg38_alt_masked_graph_v2"
 
 # Main passes are run by default
 MAIN_PASSES = [
@@ -34,10 +35,15 @@ def demux_pass(run_info):
     for idx in run_info.indices:
         samplesheet = f"/mnt/pns/runs/{run_name}/SampleSheet_{idx}.csv"
         fastq_dir = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
-        call(["bash", "scripts/demux.sh",
-                run_info.run_path,
-                samplesheet,
-                fastq_dir])
+        call([
+            "dragen",
+            "--bcl-conversion-only", "true",
+            "--bcl-use-hw", "false",
+            "--bcl-only-matched-reads", "true",
+            "--bcl-input-directory", run_info.run_path,
+            "--sample-sheet", samplesheet,
+            "--output-directory", fastq_dir
+        ])
 
 def align_pass(run_info):
     run_name = run_info.run_name
@@ -45,16 +51,54 @@ def align_pass(run_info):
         fastq_list = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
         for sample_id in get_sample_ids(fastq_list):
             bam_output = f"/mnt/pns/bams/{run_name}/$sample_id"
-            call(["bash", "scripts/align.sh",
-                    fastq_list,
-                    bam_output,
-                    run_info.bed_path,
-                    sample_id])
+            call([
+                "dragen",
+                "--enable-map-align", "true",
+                "--enable-map-align-output", "true",
+                "--output-format", "BAM",
+                "--enable-duplicate-marking", "true",
+                "--generate-sa-tags", "true",
+                "--enable-sort", "true",
+                "--soft-read-trimmers", "polyg,quality",
+                "--trim-min-quality", "2",
+                "--ref-dir", REF_PATH,
+                "--intermediate-results-dir", "/staging/tmp",
+                "--qc-coverage-tag-1", "target_bed",
+                "--qc-coverage-region-1", run_info.bed_path,
+                "--qc-coverage-reports-1", "cov_report",
+                "--qc-coverage-ignore-overlaps", "true",
+                "--enable-variant-caller", "true",
+                "--vc-combine-phased-variants-distance", "6",
+                "--vc-emit-ref-confidence", "GVCF",
+                "--enable-hla", "true",
+                "--fastq-list", fastq_list,
+                "--fastq-list-sample-id", sample_id,
+                "--output-directory", bam_output,
+                "--output-file-prefix", sample_id
+            ])
 
 def multiqc_pass(run_info):
     print("MultiQC\n-------------------------")
     save_occ_pf_plot(run_info.run_path)
-    call(["bash", f"scripts/multiqc.sh", run_info.run_name])
+
+    run_name = run_info.run_name
+    bam_dir = f"/mnt/pns/bams/{run_name}"
+    reports_dir = f"/staging/hot/reads/{run_name}"
+
+    # Remove *.wgs_*.csv files
+    for root, _, files in os.walk(bam_dir):
+        for file in files:
+            if ".wgs_" in file and file.endswith(".csv"):
+                os.remove(os.path.join(root, file))
+
+    call([
+        "multiqc",
+        "--force",
+        "--config", "./config/multiqc_config.yaml",
+        "--outdir", bam_dir,
+        bam_dir,
+        reports_dir
+    ])
 
 def get_pass_f(pass_name):
     pass_f_name = pass_name + "_pass"
@@ -84,7 +128,8 @@ class RunInfo:
         self.run_path = run_path
         self.indices = get_indices(run_path)
         self.run_name = get_run_name(run_path)
-        self.bed_path = get_bed_path(args, DEFAULT_BED_PATH)
+        self.bed_path = get_bed_path(args, DEFAULT_BED)
+
         custom_passes = args.get('O')
         self.passes = custom_passes if custom_passes else compute_passes(args)
 

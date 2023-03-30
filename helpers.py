@@ -117,39 +117,17 @@ def save_occ_pf_plot(run_path: str):
         plt.savefig(image_path, dpi=300)
         plt.close()
 
-def is_flag(arg):
-    return arg.startswith('-')
-
-def get_flag_args(char, args):
-    flag = "-" + char
-    if flag in args:
-        start = args.index(flag) + 1
-        if len(args[start:]) == 1:
-            return args[start:]
-        else:
-            for arg in args[start:]:
-                if is_flag(arg):
-                    end = args.index(arg)
-                    return args[start:end]
-                elif arg == args[-1]:
-                    end = args.index(arg) + 1
-                    return args[start:end]
-    return []
-
-def find_flags(args):
-    return [arg[1] for arg in args if is_flag(arg)]
-
 # creates a dict mapping command line flags to their arguments
 # e.x. {'O': ['a', 'b', 'c'], 'B': ['bed.BED']}
 def parse_args(cli_args):
     args_dict = {}
-    current_flag = ""
+    current_flag = None
     for arg in cli_args:
         if arg.startswith('-'):
             current_flag = arg[1:]
             args_dict[current_flag] = []
-        else:
-            args_dict[current_flag] += [arg]
+        elif current_flag is not None:
+            args_dict[current_flag].append(arg)
     return args_dict
 
 def get_bed_path(args, default_path):
