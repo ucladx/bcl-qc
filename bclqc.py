@@ -43,7 +43,7 @@ def demux_cmd(samplesheet, fastq_dir, run_path):
         "--output-directory", fastq_dir
     ])
 
-def align_cmd(fastq_list, bam_output, bed_path, sample_id):
+def align_cmd(fastq_list, ref_path, bam_output, bed_path, sample_id):
     call([
         "dragen",
         "--enable-map-align", "true",
@@ -54,7 +54,7 @@ def align_cmd(fastq_list, bam_output, bed_path, sample_id):
         "--enable-sort", "true",
         "--soft-read-trimmers", "polyg,quality",
         "--trim-min-quality", "2",
-        "--ref-dir", REF_PATH,
+        "--ref-dir", ref_path,
         "--intermediate-results-dir", "/staging/tmp",
         "--qc-coverage-tag-1", "target_bed",
         "--qc-coverage-region-1", bed_path,
@@ -99,7 +99,7 @@ def align_pass(run_info):
         fastq_list = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
         for sample_id in get_sample_ids(fastq_list):
             bam_output = f"/mnt/pns/bams/{run_name}/{sample_id}"
-            align_cmd(fastq_list, bam_output, run_info.bed_path, sample_id)
+            align_cmd(fastq_list, REF_PATH, bam_output, run_info.bed_path, sample_id)
 
 def multiqc_pass(run_info):
     print("MultiQC\n-------------------------")
