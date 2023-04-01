@@ -33,11 +33,11 @@ def demux_pass(run_info):
     run_name = run_info.run_name
     for idx in run_info.indices:
         samplesheet = f"/mnt/pns/runs/{run_name}/SampleSheet_{idx}.csv"
-        fastq_dir = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
+        fastq_output = f"/staging/hot/reads/{run_name}/"
         call(["bash", "scripts/demux.sh",
                 run_info.run_path,
                 samplesheet,
-                fastq_dir])
+                fastq_output])
 
 def align_pass(run_info):
     run_name = run_info.run_name
