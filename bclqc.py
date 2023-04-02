@@ -31,9 +31,10 @@ def megaqc_pass(run_info):
 
 def demux_pass(run_info):
     run_name = run_info.run_name
+    call(["bash", "mkdir", f"/staging/hot/reads/{run_name}/"])
     for idx in run_info.indices:
         samplesheet = f"/mnt/pns/runs/{run_name}/SampleSheet_{idx}.csv"
-        fastq_output = f"/staging/hot/reads/{run_name}/"
+        fastq_output = f"/staging/hot/reads/{run_name}/{idx}"
         call(["bash", "scripts/demux.sh",
                 run_info.run_path,
                 samplesheet,
@@ -44,7 +45,8 @@ def align_pass(run_info):
     for idx in run_info.indices:
         fastq_list = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
         for sample_id in get_sample_ids(fastq_list):
-            bam_output = f"/mnt/pns/bams/{run_name}/$sample_id"
+            bam_output = f"/mnt/pns/bams/{run_name}/{sample_id}"
+            call(["bash", "mkdir", bam_output])
             call(["bash", "scripts/align.sh",
                     fastq_list,
                     bam_output,
