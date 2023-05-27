@@ -7,8 +7,11 @@ from seaborn import scatterplot
 from interop import py_interop_run_metrics, py_interop_run, py_interop_table
 from numpy import zeros, float32
 
+# This file is for helper functions used by bclqc.py
+# While bclqc.py is designed to be lab agnostic,
+# this file includes MDL-specific functions.
+
 def is_samplesheet(file_name):
-    # could more accurately specify format here
     return re.search("^SampleSheet_.*csv$", file_name)
 
 def get_index(file_name):
@@ -18,19 +21,12 @@ def get_index(file_name):
 def get_indices(run_path):
     return [get_index(f) for f in os.listdir(run_path) if is_samplesheet(f)]
 
-def get_run_name(run_path: str):
+def get_run_id(run_path: str):
     """
     Given '.../221013_A01718_0014_AHNYGGDRX2/',
     returns '221013_A01718_0014_AHNYGGDRX2'
     """
     return [x for x in run_path.split('/') if x][-1]
-
-def get_exec_path():
-    """
-    Given '/home/iatol/test.py',
-    returns '/home/iatol'
-    """
-    return '/'.join(sys.argv[0].split('/')[:-1])
 
 def get_sample_ids(fastq_list):
     fastq_list_df = pd.read_csv(fastq_list)
@@ -117,28 +113,6 @@ def save_occ_pf_plot(run_path: str):
         plt.savefig(image_path, dpi=300)
         plt.close()
 
-def is_flag(arg):
-    return arg.startswith('-')
-
-def get_flag_args(char, args):
-    flag = "-" + char
-    if flag in args:
-        start = args.index(flag) + 1
-        if len(args[start:]) == 1:
-            return args[start:]
-        else:
-            for arg in args[start:]:
-                if is_flag(arg):
-                    end = args.index(arg)
-                    return args[start:end]
-                elif arg == args[-1]:
-                    end = args.index(arg) + 1
-                    return args[start:end]
-    return []
-
-def find_flags(args):
-    return [arg[1] for arg in args if is_flag(arg)]
-
 # creates a dict mapping command line flags to their arguments
 # e.x. {'O': ['a', 'b', 'c'], 'B': ['bed.BED']}
 def parse_args(cli_args):
@@ -151,9 +125,3 @@ def parse_args(cli_args):
         else:
             args_dict[current_flag] += [arg]
     return args_dict
-
-def get_bed_path(args, default_path):
-    if args:
-        path = args.get('B')
-        return path if path else default_path
-    return default_path
