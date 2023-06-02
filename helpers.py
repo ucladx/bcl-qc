@@ -47,7 +47,7 @@ def get_run_id(run_path: str):
     Given '.../221013_A01718_0014_AHNYGGDRX2/',
     returns '221013_A01718_0014_AHNYGGDRX2'
     """
-    return [x for x in run_path.split('/') if x][-1]
+    return run_path.split('/')[-2]
 
 def get_sample_ids(fastq_list):
     fastq_list_df = pd.read_csv(fastq_list)

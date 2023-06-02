@@ -51,11 +51,12 @@ To specify the passes you want to run, use the -P flag:
 python3 bclqc.py -P pass1 pass2 ... run_path
 ```
 
- For example, to run only demux, use:
+ For example, to run only demux and alignment, use:
  ```bash
-python3 bclqc.py -P demux run_path
+python3 bclqc.py -P demux align run_path
 ```
 
+Note that the passes are executed in the order they are given.
 
 **Adding custom passes**
 
@@ -74,14 +75,7 @@ def list_samples_pass(run_info):
 			print(sample_id)
 ```
 
-Then, we can run only this pass using:
+Then, we can run this pass using:
 ```bash
 python3 bclqc.py -P list_samples run_path
 ```
-
-To demultiplex the run and then list the samples, we can use:
-```bash
-python3 bclqc.py -P demux list_samples run_path
-```
-
-Note that the passes are executed in the order they are given.
