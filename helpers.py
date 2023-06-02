@@ -7,9 +7,25 @@ from seaborn import scatterplot
 from interop import py_interop_run_metrics, py_interop_run, py_interop_table
 from numpy import zeros, float32
 
-# This file is for helper functions used by bclqc.py
-# While bclqc.py is designed to be lab agnostic,
-# this file includes MDL-specific functions.
+# This file includes helper functions used by bclqc.py
+
+def get_run_path():
+    """
+    Returns the run path from the command line.
+    Assumes usage: `python3 bclqc.py ... run_path`
+    """
+    run_path = sys.argv[-1]
+    if run_path[-1] != '/':  run_path += '/'
+    return run_path
+
+def shell_exec(*args):
+    call(["bash", *args])
+
+def get_script(script_name):
+    return f"scripts/{script_name}.sh"
+
+def exec_pass(script_name, *args):
+    shell_exec(get_script(script_name), *args)
 
 def is_samplesheet(file_name):
     return re.search("^SampleSheet_.*csv$", file_name)
@@ -23,7 +39,7 @@ def get_indices(run_path):
     if indices:
         return indices
     else:
-        print("No indices found in " + run_path)
+        print("No samplesheets found in " + run_path)
         return None
 
 def get_run_id(run_path: str):
@@ -37,8 +53,26 @@ def get_sample_ids(fastq_list):
     fastq_list_df = pd.read_csv(fastq_list)
     return set(fastq_list_df['RGSM'])
 
-def get_script(script_name):
-    return f"scripts/{script_name}.sh"
+# creates a dict mapping command line flags to their arguments
+# e.x. {'O': ['a', 'b', 'c'], 'B': ['bed.BED']}
+def parse_args(cli_args):
+    args_dict = {}
+    current_flag = ""
+    for arg in cli_args:
+        if arg.startswith('-'):
+            current_flag = arg[1:]
+            args_dict[current_flag] = []
+        else:
+            args_dict[current_flag] += [arg]
+    return args_dict
+
+def get_custom_passes():
+    """
+    Returns the list of custom passes from the command line.
+    Assumes usage: `python3 bclqc.py -P pass1 pass2 ... run_path`
+    """
+    args = parse_args(sys.argv[1:-1])
+    return args.get('P')
 
 def parse_run_metrics(run_path: str):
     """
@@ -120,16 +154,3 @@ def save_occ_pf_plot(run_path: str):
         print("saving occ pf graph to " + image_path)
         plt.savefig(image_path, dpi=300)
         plt.close()
-
-# creates a dict mapping command line flags to their arguments
-# e.x. {'O': ['a', 'b', 'c'], 'B': ['bed.BED']}
-def parse_args(cli_args):
-    args_dict = {}
-    current_flag = ""
-    for arg in cli_args:
-        if arg.startswith('-'):
-            current_flag = arg[1:]
-            args_dict[current_flag] = []
-        else:
-            args_dict[current_flag] += [arg]
-    return args_dict

@@ -2,11 +2,11 @@
 set -eo pipefail
 
 fastq_list=$1
-bam_output=$2
+output=$2
 bed=$3
 sample_id=$4
 
-mkdir -p $bam_output
+mkdir -p $output
 echo "running align on $sample_id"
 dragen --enable-map-align true --enable-map-align-output true --output-format BAM \
 --enable-duplicate-marking true --generate-sa-tags true --enable-sort true --soft-read-trimmers polyg,quality --trim-min-quality 2 \
@@ -14,4 +14,4 @@ dragen --enable-map-align true --enable-map-align-output true --output-format BA
 --qc-coverage-tag-1 target_bed --qc-coverage-region-1 $bed  --qc-coverage-reports-1 cov_report --qc-coverage-ignore-overlaps true \
 --enable-variant-caller true --vc-combine-phased-variants-distance 6 --vc-emit-ref-confidence GVCF --enable-hla true \
 --fastq-list $fastq_list --fastq-list-sample-id $sample_id \
---output-directory $bam_output --output-file-prefix $sample_id
+--output-directory $output --output-file-prefix $sample_id

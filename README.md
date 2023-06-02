@@ -36,7 +36,27 @@ conda activate bcl-qc
 pip3 install -r ./config/py_requirements.txt
 ```
 
-**Start run watcher**
-```bash
-sh ./bcl-qc/new_run_watcher.sh <runs-directory>
+**Usage**
+The main usage of bcl-qc is as follows, where run_path is the absolute path to the run being analyzed. 
+`python3 bclqc.py run_path`
+
+To specify the passes you want to run, use the -P flag. For example, to run only demux, use:
+`python3 bclqc.py -P demux run_path`
+
+**Adding custom passes**
+You can define custom passes by defining a function in bclqc.py
+It must be named "{pass_name}_pass" and take a single argument, run_info, which is a RunInfo object containing information about the run.
+
+For example, we can define the following custom pass in bclqc.py:
+```python
+def list_samples_pass(run_info):
+	run_id = run_info.run_id
+	print(f"Listing all samples in run {run_id}")
+    for idx in run_info.indices:
+        fastq_list = f"/staging/hot/reads/{run_id}/{idx}/Reports/fastq_list.csv"
+        for sample_id in get_sample_ids(fastq_list):
+			print(sample_id)
 ```
+
+Then, we can run this pass with:
+`python3 bclqc.py -P list_samples run_path`

@@ -10,18 +10,30 @@ MAIN_PASSES = [
     "multiqc",
 ]
 
-def shell_exec(*args):
-    call(["bash", *args])
+class RunInfo:
+    # More attributes can be added as needed, and will be accessible by all passes.
+    def __init__(self):
+        self.run_path = get_run_path()
+        self.run_id = get_run_id(self.run_path)
+        self.indices = get_indices(self.run_path)
+        self.bed_path = DEFAULT_BED_PATH
+        custom_passes = get_custom_passes()
+        self.passes = custom_passes if custom_passes else MAIN_PASSES
 
-def exec_pass(script_name, *args):
-    shell_exec(get_script(script_name), *args)
+    def display(self):
+        print(f"Run Path: {self.run_path}")
+        print(f"Run ID: {self.run_id}")
+        print(f"Indices: {self.indices}")
+        print(f"Bed Path: {self.bed_path}")
+        print(f"Passes: {self.passes}")
 
 def azure_pass(run_info):
-    print("TEST Azure Upload...")
+    print("Azure upload placeholder...")
     return
 
 def megaqc_pass(run_info):
-    print("TEST MegaQC run...")
+    print("MegaQC placeholder..."")
+    return
 
 def demux_pass(run_info):
     run_id = run_info.run_id
@@ -34,8 +46,8 @@ def align_pass(run_info):
     for idx in run_info.indices:
         fastq_list = f"/staging/hot/reads/{run_id}/{idx}/Reports/fastq_list.csv"
         for sample_id in get_sample_ids(fastq_list):
-            bam_output = f"/mnt/pns/bams/{run_id}/{sample_id}"
-            exec_pass("align", fastq_list, bam_output, run_info.bed_path, sample_id)
+            output = f"/mnt/pns/bams/{run_id}/{sample_id}"
+            exec_pass("align", fastq_list, output, run_info.bed_path, sample_id)
 
 def multiqc_pass(run_info):
     save_occ_pf_plot(run_info.run_path)
@@ -59,30 +71,8 @@ def execute_pass(pass_name, run_info):
         print(f"I couldn't execute pass: {pass_name} because a pass function \n"
               f"Define a function called {pass_name}_pass in bcl-qc.py")
 
-class RunInfo:
-    def __init__(self, run_path, args):
-        self.run_path = run_path
-        self.run_id = get_run_id(run_path)
-        self.indices = get_indices(run_path)
-        self.bed_path = DEFAULT_BED_PATH
-        custom_passes = args.get('P')
-        self.passes = custom_passes if custom_passes else MAIN_PASSES
-
-    def display(self):
-        print(f"Run Path: {self.run_path}")
-        print(f"Run ID: {self.run_id}")
-        print(f"Indices: {self.indices}")
-        print(f"Bed Path: {self.bed_path}")
-        print(f"Passes: {self.passes}")
-
-    def get_run_id(self):
-        return self.run_path.split('/')[-2]
-
 def bclqc_run():
-    run_path = sys.argv[-1]
-    if run_path[-1] != '/':  run_path += '/'
-    args = parse_args(sys.argv[1:-1])
-    run_info = RunInfo(run_path, args)
+    run_info = RunInfo()
     for pass_name in run_info.passes:
         execute_pass(pass_name, run_info)
 
