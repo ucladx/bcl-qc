@@ -19,7 +19,12 @@ def get_index(file_name):
     return file_name[12:-4]
 
 def get_indices(run_path):
-    return [get_index(f) for f in os.listdir(run_path) if is_samplesheet(f)]
+    indices = [get_index(f) for f in os.listdir(run_path) if is_samplesheet(f)]
+    if indices:
+        return indices
+    else:
+        print("No indices found in " + run_path)
+        return None
 
 def get_run_id(run_path: str):
     """
@@ -31,6 +36,9 @@ def get_run_id(run_path: str):
 def get_sample_ids(fastq_list):
     fastq_list_df = pd.read_csv(fastq_list)
     return set(fastq_list_df['RGSM'])
+
+def get_script(script_name):
+    return f"scripts/{script_name}.sh"
 
 def parse_run_metrics(run_path: str):
     """

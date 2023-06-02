@@ -2,25 +2,6 @@ import sys
 from helpers import *
 from subprocess import call
 
-#   ____   _____ _           ____   _____ 
-#  |  _ \ / ____| |         / __ \ / ____|
-#  | |_) | |    | |  ______| |  | | |     
-#  |  _ <| |    | | |______| |  | | |     
-#  | |_) | |____| |____    | |__| | |____ 
-#  |____/ \_____|______|    \___\_\\_____|
-#
-
-
-### USAGE ###
-# Basic Usage:
-# python bclqc.py <run_path>
-#   this will run all MAIN_PASSES
-# 
-# Flags:
-#   -P <pass_name> <pass_name> ...
-#   run only the specified passes
-#
-
 DEFAULT_BED_PATH = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
 
 MAIN_PASSES = [
@@ -33,7 +14,6 @@ def shell_exec(*args):
     call(["bash", *args])
 
 def exec_pass(script_name, *args):
-    get_script = lambda script_name: f"scripts/{script_name}.sh"
     shell_exec(get_script(script_name), *args)
 
 def azure_pass(run_info):
@@ -45,11 +25,9 @@ def megaqc_pass(run_info):
 
 def demux_pass(run_info):
     run_id = run_info.run_id
-    call(["bash", "mkdir", f"/staging/hot/reads/{run_id}/"])
+    output_dir  = f"/staging/hot/reads/{run_id}"
     for idx in run_info.indices:
-        samplesheet = f"/mnt/pns/runs/{run_id}/SampleSheet_{idx}.csv"
-        fastq_output = f"/staging/hot/reads/{run_id}/{idx}"
-        exec_pass("demux", run_info.run_path, samplesheet, fastq_output)
+        exec_pass("demux", run_info.run_path, idx, output_dir)
 
 def align_pass(run_info):
     run_id = run_info.run_id
@@ -57,11 +35,9 @@ def align_pass(run_info):
         fastq_list = f"/staging/hot/reads/{run_id}/{idx}/Reports/fastq_list.csv"
         for sample_id in get_sample_ids(fastq_list):
             bam_output = f"/mnt/pns/bams/{run_id}/{sample_id}"
-            call(["bash", "mkdir", bam_output])
             exec_pass("align", fastq_list, bam_output, run_info.bed_path, sample_id)
 
 def multiqc_pass(run_info):
-    print("MultiQC\n-------------------------")
     save_occ_pf_plot(run_info.run_path)
     call(["bash", f"scripts/multiqc.sh", run_info.run_id])
 
@@ -77,6 +53,7 @@ def get_pass_f(pass_name):
 def execute_pass(pass_name, run_info):
     pass_function = get_pass_f(pass_name)
     if pass_function: # if a custom pass function is defined, call it first
+        print(f"Running {pass_name}...")
         pass_function(run_info)
     else:
         print(f"I couldn't execute pass: {pass_name} because a pass function \n"
@@ -85,9 +62,18 @@ def execute_pass(pass_name, run_info):
 class RunInfo:
     def __init__(self, run_path, args):
         self.run_path = run_path
+        self.run_id = get_run_id(run_path)
+        self.indices = get_indices(run_path)
         self.bed_path = DEFAULT_BED_PATH
         custom_passes = args.get('P')
         self.passes = custom_passes if custom_passes else MAIN_PASSES
+
+    def display(self):
+        print(f"Run Path: {self.run_path}")
+        print(f"Run ID: {self.run_id}")
+        print(f"Indices: {self.indices}")
+        print(f"Bed Path: {self.bed_path}")
+        print(f"Passes: {self.passes}")
 
     def get_run_id(self):
         return self.run_path.split('/')[-2]

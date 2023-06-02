@@ -6,6 +6,7 @@ bam_output=$2
 bed=$3
 sample_id=$4
 
+mkdir -p $bam_output
 echo "running align on $sample_id"
 dragen --enable-map-align true --enable-map-align-output true --output-format BAM \
 --enable-duplicate-marking true --generate-sa-tags true --enable-sort true --soft-read-trimmers polyg,quality --trim-min-quality 2 \
