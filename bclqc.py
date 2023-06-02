@@ -2,6 +2,8 @@ import sys
 from helpers import *
 from subprocess import call
 
+BAM_OUTPUT_ROOT = "/mnt/pns/bams"
+FASTQ_OUTPUT_ROOT = "/staging/hot/reads"
 DEFAULT_BED_PATH = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
 
 MAIN_PASSES = [
@@ -19,6 +21,7 @@ class RunInfo:
         self.bed_path = DEFAULT_BED_PATH
         custom_passes = get_custom_passes()
         self.passes = custom_passes if custom_passes else MAIN_PASSES
+        self.fastq_dir = f"{FASTQ_OUTPUT_ROOT}/{self.run_id}"
 
     def display(self):
         print(f"Run Path: {self.run_path}")
@@ -32,22 +35,20 @@ def azure_pass(run_info):
     return
 
 def megaqc_pass(run_info):
-    print("MegaQC placeholder..."")
+    print("MegaQC placeholder...")
     return
 
 def demux_pass(run_info):
-    run_id = run_info.run_id
-    output_dir  = f"/staging/hot/reads/{run_id}"
     for idx in run_info.indices:
-        exec_pass("demux", run_info.run_path, idx, output_dir)
+        exec_pass("demux", run_info.run_path, idx, run_info.fastq_dir)
 
 def align_pass(run_info):
     run_id = run_info.run_id
     for idx in run_info.indices:
-        fastq_list = f"/staging/hot/reads/{run_id}/{idx}/Reports/fastq_list.csv"
+        fastq_list = f"{run_info.fastq_dir}/{idx}/Reports/fastq_list.csv"
         for sample_id in get_sample_ids(fastq_list):
-            output = f"/mnt/pns/bams/{run_id}/{sample_id}"
-            exec_pass("align", fastq_list, output, run_info.bed_path, sample_id)
+            output_dir = f"{BAM_OUTPUT_ROOT}/{run_id}/{sample_id}"
+            exec_pass("align", fastq_list, output_dir, run_info.bed_path, sample_id)
 
 def multiqc_pass(run_info):
     save_occ_pf_plot(run_info.run_path)
