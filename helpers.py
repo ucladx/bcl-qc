@@ -20,7 +20,7 @@ def get_run_path():
     return run_path
 
 def shell_exec(*args):
-    call(["bash", *args])
+    call(["bash"] + args)
 
 def get_script(script_name):
     return f"scripts/{script_name}.sh"
