@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import pandas as pd
-from subprocess import call
 import matplotlib.pyplot as plt
 from seaborn import scatterplot
 from interop import py_interop_run_metrics, py_interop_run, py_interop_table
@@ -20,7 +19,8 @@ def get_run_path():
     return run_path
 
 def shell_exec(*args):
-    call(["bash"] + args)
+    cmd = ' '.join([str(arg) for arg in args])
+    os.system(cmd)
 
 def get_script(script_name):
     return f"scripts/{script_name}.sh"

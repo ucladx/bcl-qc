@@ -14,7 +14,7 @@ MAIN_PASSES = [
 
 class RunInfo:
     # More attributes can be added as needed, and will be accessible by all passes.
-    def __init__(self, run_name, args):
+    def __init__(self, run_name):
         self.run_name = run_name
         self.run_path = RUN_DIR + run_name + "/"
         self.bed_path = DEFAULT_BED_PATH
@@ -39,7 +39,7 @@ def megaqc_pass(run_info):
 
 def demux_pass(run_info):
     run_name = run_info.run_name
-    shell_exec(["mkdir", f"/staging/hot/reads/{run_name}/"])
+    shell_exec("mkdir", f"/staging/hot/reads/{run_name}/")
     for idx in run_info.indices:
         samplesheet = f"/mnt/pns/runs/{run_name}/SampleSheet_{idx}.csv"
         fastq_output = f"/staging/hot/reads/{run_name}/{idx}"
@@ -51,7 +51,7 @@ def align_pass(run_info):
         fastq_list = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
         for sample_id in get_sample_ids(fastq_list):
             bam_output = f"/mnt/pns/bams/{run_name}/{sample_id}"
-            shell_exec(["mkdir", bam_output])
+            shell_exec("mkdir", bam_output)
             exec_pass("align", fastq_list, bam_output, run_info.bed_path, sample_id)
 
 def multiqc_pass(run_info):
