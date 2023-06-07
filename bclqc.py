@@ -5,6 +5,7 @@ from subprocess import call
 BAM_OUTPUT_ROOT = "/mnt/pns/bams"
 FASTQ_OUTPUT_ROOT = "/staging/hot/reads"
 DEFAULT_BED_PATH = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
+RUN_DIR = "/mnt/pns/runs/"
 
 MAIN_PASSES = [
     "demux",
@@ -14,14 +15,13 @@ MAIN_PASSES = [
 
 class RunInfo:
     # More attributes can be added as needed, and will be accessible by all passes.
-    def __init__(self):
-        self.run_path = get_run_path()
-        self.run_id = get_run_id(self.run_path)
-        self.indices = get_indices(self.run_path)
+    def __init__(self, run_name, args):
+        self.run_name = run_name
+        self.run_path = RUN_DIR + run_name + "/"
         self.bed_path = DEFAULT_BED_PATH
+        self.indices = get_indices(self.run_path)
         custom_passes = get_custom_passes()
         self.passes = custom_passes if custom_passes else MAIN_PASSES
-        self.fastq_dir = f"{FASTQ_OUTPUT_ROOT}/{self.run_id}"
 
     def display(self):
         print(f"Run Path: {self.run_path}")
@@ -39,20 +39,25 @@ def megaqc_pass(run_info):
     return
 
 def demux_pass(run_info):
+    run_name = run_info.run_name
+    shell_exec(["mkdir", f"/staging/hot/reads/{run_name}/"])
     for idx in run_info.indices:
-        exec_pass("demux", run_info.run_path, idx, run_info.fastq_dir)
+        samplesheet = f"/mnt/pns/runs/{run_name}/SampleSheet_{idx}.csv"
+        fastq_output = f"/staging/hot/reads/{run_name}/{idx}"
+        exec_pass("demux", run_info.run_path, samplesheet, fastq_output)
 
 def align_pass(run_info):
-    run_id = run_info.run_id
+    run_name = run_info.run_name
     for idx in run_info.indices:
-        fastq_list = f"{run_info.fastq_dir}/{idx}/Reports/fastq_list.csv"
+        fastq_list = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
         for sample_id in get_sample_ids(fastq_list):
-            output_dir = f"{BAM_OUTPUT_ROOT}/{run_id}/{sample_id}"
-            exec_pass("align", fastq_list, output_dir, run_info.bed_path, sample_id)
+            bam_output = f"/mnt/pns/bams/{run_name}/{sample_id}"
+            shell_exec(["mkdir", bam_output])
+            exec_pass("align", fastq_list, bam_output, run_info.bed_path, sample_id)
 
 def multiqc_pass(run_info):
     save_occ_pf_plot(run_info.run_path)
-    call(["bash", f"scripts/multiqc.sh", run_info.run_id])
+    exec_pass("multiqc", run_info.run_name)
 
 def get_pass_f(pass_name):
     pass_f_name = pass_name + "_pass"
@@ -72,10 +77,21 @@ def execute_pass(pass_name, run_info):
         print(f"I couldn't execute pass: {pass_name} because a pass function \n"
               f"Define a function called {pass_name}_pass in bcl-qc.py")
 
-def bclqc_run():
-    run_info = RunInfo()
+class RunInfo:
+    def __init__(self, run_name, args):
+        self.run_name = run_name
+        self.run_path = RUN_DIR + run_name + "/"
+        self.bed_path = DEFAULT_BED_PATH
+        self.indices = get_indices(self.run_path)
+        custom_passes = args.get('P')
+        self.passes = custom_passes if custom_passes else MAIN_PASSES
+
+def bclqc_run(run_name, args=None):
+    run_info = RunInfo(run_name, args)
     for pass_name in run_info.passes:
         execute_pass(pass_name, run_info)
 
 if __name__ == "__main__":
-    bclqc_run()
+    run_name = sys.argv[-1]
+    args = parse_args(sys.argv[1:-1])
+    bclqc_run(run_name, args)
