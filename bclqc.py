@@ -1,6 +1,5 @@
 import sys
 from helpers import *
-from subprocess import call
 
 BAM_OUTPUT_ROOT = "/mnt/pns/bams"
 FASTQ_OUTPUT_ROOT = "/staging/hot/reads"
