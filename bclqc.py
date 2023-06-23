@@ -1,5 +1,6 @@
 import sys
 from helpers import *
+from subprocess import call
 
 BAM_OUTPUT_ROOT = "/mnt/pns/bams"
 FASTQ_OUTPUT_ROOT = "/staging/hot/reads"
@@ -39,7 +40,7 @@ def megaqc_pass(run_info):
 
 def demux_pass(run_info):
     run_name = run_info.run_name
-    shell_exec("mkdir", f"/staging/hot/reads/{run_name}/")
+    call(["mkdir", f"/staging/hot/reads/{run_name}/"])
     for idx in run_info.indices:
         samplesheet = f"/mnt/pns/runs/{run_name}/SampleSheet_{idx}.csv"
         fastq_output = f"/staging/hot/reads/{run_name}/{idx}"
@@ -51,7 +52,7 @@ def align_pass(run_info):
         fastq_list = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
         for sample_id in get_sample_ids(fastq_list):
             bam_output = f"/mnt/pns/bams/{run_name}/{sample_id}"
-            shell_exec("mkdir", bam_output)
+            call(["mkdir", "-p", bam_output])
             exec_pass("align", fastq_list, bam_output, run_info.bed_path, sample_id)
 
 def multiqc_pass(run_info):
