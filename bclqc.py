@@ -78,20 +78,20 @@ def execute_pass(pass_name, run_info):
               f"Define a function called {pass_name}_pass in bcl-qc.py")
 
 class RunInfo:
-    def __init__(self, run_name, args):
-        self.run_name = run_name
-        self.run_path = RUN_DIR + run_name + "/"
+    def __init__(self, run_path, args):
+        self.run_path = run_path
+        self.run_name = get_run_name(run_path)
         self.bed_path = DEFAULT_BED_PATH
         self.indices = get_indices(self.run_path)
         custom_passes = args.get('P')
         self.passes = custom_passes if custom_passes else MAIN_PASSES
 
-def bclqc_run(run_name, args=None):
-    run_info = RunInfo(run_name, args)
+def bclqc_run(run_path, args=None):
+    run_info = RunInfo(run_path, args)
     for pass_name in run_info.passes:
         execute_pass(pass_name, run_info)
 
 if __name__ == "__main__":
-    run_name = sys.argv[-1]
-    args = parse_args(sys.argv[1:-1])
-    bclqc_run(run_name, args)
+    run_path = get_run_path()
+    args = get_args()
+    bclqc_run(run_path, args)

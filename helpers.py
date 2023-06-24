@@ -16,8 +16,11 @@ def get_run_path():
     Assumes usage: `python3 bclqc.py ... run_path`
     """
     run_path = sys.argv[-1]
-    if run_path[-1] != '/':  run_path += '/'
+    if run_path[-1] == '/': run_path = run_path[:-1]
     return run_path
+
+def get_args():
+    return parse_args(sys.argv[1:-1])
 
 def shell_exec(*args):
     cmd = ["bash", *args]
@@ -46,12 +49,12 @@ def get_indices(run_path):
         print("No samplesheets found in " + run_path)
         return None
 
-def get_run_id(run_path: str):
+def get_run_name(run_path: str):
     """
     Given '.../221013_A01718_0014_AHNYGGDRX2/',
     returns '221013_A01718_0014_AHNYGGDRX2'
     """
-    return run_path.split('/')[-2]
+    return run_path.split('/')[-1]
 
 def get_sample_ids(fastq_list):
     fastq_list_df = pd.read_csv(fastq_list)
