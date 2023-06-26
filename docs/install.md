@@ -9,12 +9,7 @@ $HOME/mambaforge/condabin/mamba init
 
 ### Setup environment
 ```shell
-mamba create --name bcl-qc --file config/conda_env.txt
-conda activate bcl-qc
+mamba env create -f config/conda_env.yml
+conda activate bclqc
 pip3 install -r config/py_requirements.txt
-```
-
-# Start run watcher
-```shell
-sh bcl-qc/new_run_watcher.sh <runs-directory>
 ```

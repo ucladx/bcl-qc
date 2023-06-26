@@ -2,11 +2,26 @@ import sys
 from helpers import *
 from subprocess import call
 
-BAM_OUTPUT_ROOT = "/mnt/pns/bams"
-FASTQ_OUTPUT_ROOT = "/staging/hot/reads"
-DEFAULT_BED_PATH = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
-RUN_DIR = "/mnt/pns/runs/"
-HUMAN_REF = "/staging/human/reference/hg38_alt_masked_graph_v2"
+HELP_MSG = """BCLQC
+Usage: python3 bclqc.py [options] fastqs_dir bams_dir run_dir
+
+fastqs_dir is the parent directory where FASTQs will be output
+bams_dir is the parent directory where BAMs will be output
+run_dir is the directory containing the run data to be processed
+
+For example:
+`python3 bclqc.py [options] /fastqs /bams /runs/210930`
+
+In this case /fastqs/210930 and /bams/210930 will be created if they don't exist,
+and FASTQs and BAMs will be written to those directories respectively.
+
+Options:
+    -P [pass1,pass2,...]    Run only the specified passes
+    -h, --help              Print this help message
+    -d, --dry-run           Dry run: print commands without executing them"""
+
+DEFAULT_BED_FILE = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
+DEFAULT_HUMAN_REF = "/staging/human/reference/hg38_alt_masked_graph_v2"
 
 MAIN_PASSES = [
     "demux",
@@ -14,34 +29,26 @@ MAIN_PASSES = [
     "multiqc",
 ]
 
-def azure_pass(run_info):
-    print("Azure upload placeholder...")
-    return
-
-def megaqc_pass(run_info):
-    print("MegaQC placeholder...")
-    return
-
-def demux_cmd(run_path, samplesheet, fastq_output):
-    call(["dragen",
+def demux(run_dir, samplesheet, fastq_output,
+          exec_cmd=call):
+    """
+    Perform demultiplexing on a NovaSeq run using Dragen BCLConvert
+    Inputs:
+        run_dir: path to the folder containing the NovaSeq run data
+        samplesheet: path to the SampleSheet.csv to be used for this demultiplexing
+        fastq_output: path to the folder where the demultiplexed FASTQs will be written
+    """
+    exec_cmd(["dragen",
           "--bcl-conversion-only", "true",
           "--bcl-use-hw", "false",
           "--bcl-only-matched-reads", "true",
-          "--bcl-input-directory", run_path,
+          "--bcl-input-directory", run_dir,
           "--sample-sheet", samplesheet,
           "--output-directory", fastq_output])
 
-def demux_pass(run_info):
-    run_name = run_info.run_name
-    call(["mkdir", "-p", f"/staging/hot/reads/{run_name}/"])
-    for idx in run_info.indices:
-        samplesheet = f"/mnt/pns/runs/{run_name}/SampleSheet_{idx}.csv"
-        fastq_output = f"/staging/hot/reads/{run_name}/{idx}"
-        demux_cmd(run_info.run_path, samplesheet, fastq_output)
-
-def align_cmd(fastq_list, bam_output, bed_path, sample_id):
-    call(["mkdir", "-p", bam_output])
-    call(["dragen",
+def align(fastq_list, bam_output, bed_file, sample_id, exec_cmd=call):
+    exec_cmd(["mkdir", "-p", bam_output])
+    exec_cmd(["dragen",
           "--enable-map-align", "true",
           "--enable-map-align-output", "true",
           "--output-format", "BAM",
@@ -50,10 +57,10 @@ def align_cmd(fastq_list, bam_output, bed_path, sample_id):
           "--enable-sort", "true",
           "--soft-read-trimmers", "polyg,quality",
           "--trim-min-quality", "2",
-          "--ref-dir", HUMAN_REF,
+          "--ref-dir", DEFAULT_HUMAN_REF,
           "--intermediate-results-dir", "/staging/tmp",
           "--qc-coverage-tag-1", "target_bed",
-          "--qc-coverage-region-1", bed_path,
+          "--qc-coverage-region-1", bed_file,
           "--qc-coverage-reports-1", "cov_report",
           "--qc-coverage-ignore-overlaps", "true",
           "--enable-variant-caller", "true",
@@ -66,29 +73,41 @@ def align_cmd(fastq_list, bam_output, bed_path, sample_id):
           "--output-file-prefix", sample_id,
     ])
 
-def align_pass(run_info):
-    run_name = run_info.run_name
-    for idx in run_info.indices:
-        fastq_list = f"/staging/hot/reads/{run_name}/{idx}/Reports/fastq_list.csv"
-        for sample_id in get_sample_ids(fastq_list):
-            bam_output = f"/mnt/pns/bams/{run_name}/{sample_id}"
-            align_cmd(fastq_list, bam_output, run_info.bed_path, sample_id)
-
-def multiqc_cmd(run_name):
-    call(["rm", "-f", "/mnt/pns/bams/$run_name/*/*.wgs_*.csv"])
-    call(["multiqc",
+def multiqc_cmd(fastqs_dir, bams_dir, exec_cmd=call):
+    exec_cmd(["rm", "-f", f"{bams_dir}/*/*.wgs_*.csv"])
+    exec_cmd(["multiqc",
           "--force",
           "--config", "config/multiqc_config.yaml",
-          "--outdir", f"/mnt/pns/bams/{run_name}/",
+          "--outdir", bams_dir,
            # dirs to scan
-          f"/mnt/pns/bams/{run_name}",
-          f"/staging/hot/reads/{run_name}/",
+          bams_dir,
+          fastqs_dir,
     ])
 
+def demux_pass(run_info):
+    run_dir = run_info.run_dir
+    fastqs_dir = run_info.fastqs_dir
+    exec_cmd = run_info.exec_cmd
+    exec_cmd(["mkdir", "-p", fastqs_dir])
+    for idx in run_info.indices:
+        samplesheet = f"{run_dir}/SampleSheet_{idx}.csv"
+        fastq_output = f"{fastqs_dir}/{idx}"
+        demux(run_dir, samplesheet, fastq_output, exec_cmd)
+
+def align_pass(run_info):
+    fastqs_dir = run_info.fastqs_dir
+    bams_dir = run_info.bams_dir
+    for idx in run_info.indices:
+        fastq_list = f"{fastqs_dir}/{idx}/Reports/fastq_list.csv"
+        if not os.path.exists(fastq_list):
+            raise Exception(f"Alignment Error: {fastq_list} does not exist")
+        for sample_id in get_sample_ids(fastq_list):
+            bam_output = f"{bams_dir}/{sample_id}"
+            align(fastq_list, bam_output, run_info.bed_file, sample_id, run_info.exec_cmd)
 
 def multiqc_pass(run_info):
-    save_occ_pf_plot(run_info.run_path, run_info.run_name)
-    multiqc_cmd(run_info.run_name)
+    save_occ_pf_plot(run_info.run_dir, run_info.bams_dir, run_info.exec_cmd)
+    multiqc_cmd(run_info.fastqs_dir, run_info.bams_dir, run_info.exec_cmd)
 
 def get_pass_f(pass_name):
     pass_f_name = pass_name + "_pass"
@@ -109,20 +128,24 @@ def execute_pass(pass_name, run_info):
               f"Define a function called {pass_name}_pass in bcl-qc.py")
 
 class RunInfo:
-    def __init__(self, run_path, args):
-        self.run_path = run_path
-        self.run_name = get_run_name(run_path)
-        self.bed_path = DEFAULT_BED_PATH
-        self.indices = get_indices(self.run_path)
-        custom_passes = args.get('P')
-        self.passes = custom_passes if custom_passes else MAIN_PASSES
+    def __init__(self):
+        [fastqs_dir, bams_dir, run_dir] = get_arg_dirs()
+        self.run_dir = run_dir
+        self.bams_dir = bams_dir
+        self.fastqs_dir = fastqs_dir
+        # TODO allow BED paths to be specified per sample in samplesheet
+        self.bed_file = DEFAULT_BED_FILE
+        self.indices = get_indices(self.run_dir)
+        self.passes = get_passes()
+        self.exec_cmd = get_exec_cmd()
 
-def bclqc_run(run_path, args=None):
-    run_info = RunInfo(run_path, args)
+def bclqc_run():
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print(HELP_MSG)
+        return
+    run_info = RunInfo()
     for pass_name in run_info.passes:
         execute_pass(pass_name, run_info)
 
 if __name__ == "__main__":
-    run_path = get_run_path()
-    args = get_args()
-    bclqc_run(run_path, args)
+    bclqc_run()
