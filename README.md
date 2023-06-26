@@ -14,7 +14,7 @@ For an NGS lab like ours with few engineers - the less infrastructure we build, 
 
 ### Server
 
-[Click here](dx-var.md) to see how we set up our primary server. These instructions are written for sysadmins or DevOps engineers, but if you are a quick study and armed with Google, you'll do fine too. Detailed and versioned instructions like these helps to quickly replace the primary server in case of failure. ::TODO:: Later, we should use configuration management tools like [Ansible](https://en.wikipedia.org/wiki/Ansible_(software)) to automate deployment of new servers for fault tolerance or load balancing.
+[Click here](docs/dx-var.md) to see how we set up our primary server. These instructions are written for sysadmins or DevOps engineers, but if you are a quick study and armed with Google, you'll do fine too. Detailed and versioned instructions like these helps to quickly replace the primary server in case of failure. ::TODO:: Later, we should use configuration management tools like [Ansible](https://en.wikipedia.org/wiki/Ansible_(software)) to automate deployment of new servers for fault tolerance or load balancing.
 
 ### Quick start
 **Clone the git repo**
@@ -27,55 +27,28 @@ cd bcl-qc
 curl -L https://github.com/conda-forge/miniforge/releases/download/22.9.0-1/Mambaforge-Linux-x86_64.sh -o mambaforge.sh
 sh mambaforge.sh -bfp $HOME/mambaforge && rm -f mambaforge.sh 
 ```
-
-**Setup conda env and dependencies**
-```bash
-conda init
-conda create --name bcl-qc --file ./config/conda_env.txt
-conda activate bcl-qc
-pip3 install -r ./config/py_requirements.txt
+**Setup environment**
+```shell
+conda env create -f config/conda_env.yml
+conda activate bclqc
+pip3 install -r config/py_requirements.txt
 ```
 
-### Usage
-**Basic Usage**
-```bash
-python3 bclqc.py run_path
-```
+**Usage**
+python3 bclqc.py [options] fastqs_dir bams_dir run_dir
 
-Where `run_path` is the absolute path to the run being analyzed. 
+fastqs_dir is the parent directory where FASTQs will be output
+bams_dir is the parent directory where BAMs will be output
+run_dir is the directory containing the run data to be processed
 
-**Running specific passes**
+For example:
+`python3 bclqc.py [options] /fastqs /bams /runs/210930`
 
-To specify the passes you want to run, use the -P flag:
-```bash
-python3 bclqc.py -P pass1 pass2 ... run_path
-```
+In this case /fastqs/210930 and /bams/210930 will be created if they don't exist,
+and FASTQs and BAMs will be written to those directories respectively.
 
- For example, to run only demux and alignment, use:
- ```bash
-python3 bclqc.py -P demux align run_path
-```
-
-Note that the passes are executed in the order they are given.
-
-**Adding custom passes**
-
-You can define custom passes by defining a function in bclqc.py
-
-It must be named [pass_name]_pass and take a single argument, run_info, which is an object defined in bcl-qc.py containing information about the run.
-
-For example, we can define the following custom pass in bclqc.py:
-```python
-def list_samples_pass(run_info):
-	run_id = run_info.run_id
-	print(f"Listing all samples in run {run_id}")
-    for idx in run_info.indices:
-        fastq_list = f"/staging/hot/reads/{run_id}/{idx}/Reports/fastq_list.csv"
-        for sample_id in get_sample_ids(fastq_list):
-			print(sample_id)
-```
-
-Then, we can run this pass using:
-```bash
-python3 bclqc.py -P list_samples run_path
-```
+Options:
+    -P [pass1,pass2,...]    Run only the specified passes
+    -h, --help              Print this help message
+    -d, --dry-run           Dry run: print commands without executing them
+Where `run_path` is the absolute path to the run being analyzed.
