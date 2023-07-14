@@ -131,7 +131,7 @@ def parse_run_metrics(run_path: str):
 
     return pd.DataFrame(data, columns=headers)
 
-def save_occ_pf_plot(run_path: str):
+def save_occ_pf_plot(run_path: str, run_name):
     """
     Saves a % Occupied x % Pass Filter scatter to `SAVE_DIR`.
     """
@@ -156,7 +156,7 @@ def save_occ_pf_plot(run_path: str):
         plt.legend(title=view, bbox_to_anchor=[1.2, 0.9])
         plt.tight_layout()
 
-        save_dir = f"/mnt/pns/bams/{get_run_id(run_path)}/"
+        save_dir = f"/mnt/pns/bams/{run_name}/"
         image_path = save_dir + f"occ_pf_{view.lower()}_mqc.jpg"
         print("saving occ pf graph to " + image_path)
         plt.savefig(image_path, dpi=300)

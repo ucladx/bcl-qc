@@ -104,7 +104,7 @@ def multiqc_cmd(run_name):
 
 
 def multiqc_pass(run_info):
-    save_occ_pf_plot(run_info.run_path)
+    save_occ_pf_plot(run_info.run_path, run_info.run_name)
     multiqc_cmd(run_info.run_name)
 
 def get_pass_f(pass_name):
