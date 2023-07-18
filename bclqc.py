@@ -14,23 +14,6 @@ MAIN_PASSES = [
     "multiqc",
 ]
 
-class RunInfo:
-    # More attributes can be added as needed, and will be accessible by all passes.
-    def __init__(self, run_name):
-        self.run_name = run_name
-        self.run_path = RUN_DIR + run_name + "/"
-        self.bed_path = DEFAULT_BED_PATH
-        self.indices = get_indices(self.run_path)
-        custom_passes = get_custom_passes()
-        self.passes = custom_passes if custom_passes else MAIN_PASSES
-
-    def display(self):
-        print(f"Run Path: {self.run_path}")
-        print(f"Run ID: {self.run_id}")
-        print(f"Indices: {self.indices}")
-        print(f"Bed Path: {self.bed_path}")
-        print(f"Passes: {self.passes}")
-
 def azure_pass(run_info):
     print("Azure upload placeholder...")
     return
