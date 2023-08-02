@@ -12,8 +12,7 @@ from bclqc import MAIN_PASSES
 # This file includes helper functions used by bclqc.py
 
 def trim_slash(path):
-    if path[-1] == '/': path = path[:-1]
-    return path
+    return path[:-1] if path[-1] == '/' else path
 
 def get_run_name(run_dir: str):
     """
