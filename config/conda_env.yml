@@ -1,4 +1,3 @@
-name: bclqc
 channels:
   - bioconda
   - conda-forge
@@ -106,4 +105,3 @@ dependencies:
       - seaborn==0.12.2
       - simplejson==3.18.3
       - urllib3==1.26.15
-prefix: /opt/conda/envs/bclqc

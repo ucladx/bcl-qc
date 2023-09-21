@@ -135,7 +135,7 @@ class RunInfo:
         self.fastqs_dir = fastqs_dir
         # TODO allow BED paths to be specified per sample in samplesheet
         self.bed_file = DEFAULT_BED_FILE
-        self.indices = get_indices(self.run_dir)
+        self.indices = get_indices(run_dir)
         self.passes = get_passes()
         self.exec_cmd = get_exec_cmd()
 
