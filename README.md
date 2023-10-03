@@ -13,7 +13,7 @@ For an NGS lab like ours with few engineers - the less infrastructure we build, 
 
 ### Quick start
 
-We'll use conda for package manangement which is typically installed under `~/miniconda3`. But dragen servers do not allow execution of binaries in user home directories, so create a folder named `/opt/conda` where we can install it instead.
+We'll use conda for package manangement which is typically installed under `~/miniconda3`. But dragen servers do not allow execution of binaries under `~/`, so create `/opt/conda` where we can install it instead.
 
 ```bash
 sudo mkdir -m 775 /opt/conda
@@ -22,7 +22,7 @@ curl -L https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o
 bash /tmp/miniconda.sh -bup /opt/conda && rm -f /tmp/miniconda.sh
 ```
 
-Add the following lines to your ~/.bashrc so that conda is available across sessions. Then log out and login to ensure that `conda` in your `$PATH`.
+Add the following lines to your `~/.bashrc` so that conda is available across sessions. Then log out and login to ensure that `conda` is in your `$PATH`.
 
 ```bash
 # Add conda to PATH if found
@@ -49,7 +49,7 @@ git checkout v1.1.0
 Create a new conda environment with dependencies installed, and activate it.
 
 ```bash
-conda env create -yn bclqc -f config/conda_env.yaml
+conda env create -qn bclqc -f config/conda_env.yaml
 conda activate bclqc
 ```
 
