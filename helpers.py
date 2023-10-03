@@ -61,7 +61,7 @@ def exec_pass(script_name, *args):
     call(["bash", f"scripts/{script_name}.sh", *args])
 
 def is_samplesheet(file_name):
-    return re.search("^SampleSheet_.*csv$", file_name)
+    return re.search("^SampleSheet_.*\.csv$", file_name)
 
 def get_index(file_name):
     # assumes samplesheet format is "SampleSheet_{index}.csv"

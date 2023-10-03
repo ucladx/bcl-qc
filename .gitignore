@@ -1,5 +1,8 @@
 *.pyc
-/dist/
-/build/
-/*.egg-info
-/data/
+*.egg-info
+dist/
+build/
+demo_run/*
+!demo_run/SampleSheet*.csv
+reads/
+bams/
