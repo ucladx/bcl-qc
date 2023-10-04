@@ -1,0 +1,30 @@
+tmpdir: "/staging/tmp"
+
+pcp:
+  - dragen_version: "4.0.3-8"
+  - dragen_install: "/staging/installer/dragen-4.0.3-8.el7.x86_64.run"
+  - reference_dir: "/staging/human/reference/hg38_alt_masked_graph_v2"
+  - targets_bed: "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
+  - baits_bed: "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_merged_baits.hg38.bed"
+
+pto:
+  - dragen_version: "4.2.4-2-g510a01ca"
+  - dragen_install: "/staging/installer/dragen-4.2.4_2_g510a01ca-9.el7.x86_64.run"
+  - reference_dir: "/staging/human/reference/hg38_alt_masked_graph_v3"
+  - targets_bed: "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
+  - baits_bed: "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_merged_baits.hg38.bed"
+
+ces:
+  - dragen_version: "4.2.4-2-g510a01ca"
+  - dragen_install: "/staging/installer/dragen-4.2.4_2_g510a01ca-9.el7.x86_64.run"
+  - reference_dir: "/staging/human/reference/hg38_alt_masked_graph_v3"
+  - targets_bed: "/mnt/pns/tracks/mane_release_v1.2_cds_targets.hg38.bed"
+  - baits_bed: "/mnt/pns/tracks/twist_exome_v2_merged_baits.hg38.bed"
+
+heme:
+  - dragen_version: "4.2.4-2-g510a01ca"
+  - dragen_install: "/staging/installer/dragen-4.2.4_2_g510a01ca-9.el7.x86_64.run"
+  - dragen_add_opts: "--enable-umi true"
+  - reference_dir: "/staging/human/reference/hg38_alt_masked_graph_v3"
+  - targets_bed: "/mnt/pns/tracks/mane_release_v1.2_cds_targets.hg38.bed"
+  - baits_bed: "/mnt/pns/tracks/twist_exome_v2_merged_baits.hg38.bed"

@@ -1,5 +1,6 @@
 *.pyc
 *.egg-info
+.nextflow*
 dist/
 build/
 demo_run/*
