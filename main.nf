@@ -26,49 +26,54 @@ process align {
   input:
   path fastq_list
   path bam_outdir
-  tuple val(sample_id), val(assay)
+  each sample_id
+
+  when:
+  sample_id != null
 
   script:
   // TODO validate assay names using samplesheet schema
-  assay_params = params[assay]
+  sample_id = sample_id.trim()
+  assay_params = params[params.assay]
   dragen_install = assay_params.dragen_install
   reference_dir = assay_params.reference_dir
   targets_bed = assay_params.targets_bed
   baits_bed = assay_params.baits_bed
+  addtl_cmds = assay_params.addtl_cmds
+
+  outdir = "${params.bam_outdir}" + "${sample_id}"
 
   alignment_cmd = """dragen \
-  --enable-map-align true \
-  --enable-map-align-output true \
-  --output-format BAM \
-  --enable-duplicate-marking true \
-  --generate-sa-tags true \
-  --enable-sort true \
-  --soft-read-trimmers polyg,quality \
-  --trim-min-quality 2 \
-  --ref-dir ${reference_dir} \
-  --intermediate-results-dir /staging/tmp \
-  --qc-coverage-tag-1 target_bed \
-  --qc-coverage-region-1 ${targets_bed} \
-  --qc-coverage-reports-1 cov_report \
-  --qc-coverage-ignore-overlaps true \
-  --enable-variant-caller true \
-  --vc-combine-phased-variants-distance 6 \
-  --vc-emit-ref-confidence GVCF \
-  --enable-hla true \
-  --fastq-list ${fastq_list} \
-  --fastq-list-sample-id ${sample_id} \
-  --output-directory ${bam_outdir} \
-  --output-file-prefix ${sample_id}
-  """
+--enable-map-align true \
+--enable-map-align-output true \
+--output-format BAM \
+--enable-duplicate-marking true \
+--generate-sa-tags true \
+--enable-sort true \
+--soft-read-trimmers polyg,quality \
+--trim-min-quality 2 \
+--ref-dir ${reference_dir} \
+--intermediate-results-dir /staging/tmp \
+--qc-coverage-tag-1 target_bed \
+--qc-coverage-region-1 ${targets_bed} \
+--qc-coverage-reports-1 cov_report \
+--qc-coverage-ignore-overlaps true \
+--enable-variant-caller true \
+--vc-combine-phased-variants-distance 6 \
+--vc-emit-ref-confidence GVCF \
+--enable-hla true \
+--fastq-list ${fastq_list} \
+--fastq-list-sample-id ${sample_id} \
+--output-directory ${outdir} \
+--output-file-prefix ${sample_id}"""
 
-  if (assay_params.dragen_addtl_align_opts) {
-    alignment_cmd += assay_params.dragen_addtl_align_opts
+  if (addtl_cmds) {
+    alignment_cmd += " ${addtl_cmds}"
   }
 
   shell:
   '''
-  sh !{dragen_install}
-  mkdir !{bam_outdir}!{sample_id}
+  mkdir -p !{outdir}
   !{alignment_cmd}
   '''
 }
@@ -79,10 +84,9 @@ process multiqc {
   path bams_dir
   
   shell:
-  '''
-  multiqc --force \
+  '''multiqc --force \
   --config config/multiqc_config.yaml \
-  --outdir !{bams_dir} \
+  --outdir !{params.bams_dir} \
   !{bams_dir} \
   !{fastqs_dir}
   '''
@@ -97,26 +101,47 @@ process trim_samplesheet{
 
   shell:
   '''
-  awk '[BCLConvert_Data] {flag=1; next} flag' !{samplesheet} > trimmed_samplesheet.csv
+  start_line=$(grep -n 'BCLConvert_Data' "!{samplesheet}" | cut -d: -f1)
+  if [[ -n "$start_line" ]]; then
+      sed -n "$((start_line + 1)),$ p" "!{samplesheet}" > 'trimmed_samplesheet.csv'
+  fi
+  '''
+}
+
+process parse_fastq_list {
+  input:
+  path fastq_list
+
+  output:
+  path 'samples.txt'
+
+  shell:
+  '''
+  cat !{fastq_list} | cut -d, -f2 | tail +2 > samples.txt
   '''
 }
 
 workflow {
-  def fastq_list = params.fastq_list // null if not provided
-  def dragen_samplesheet = params.input
+  fastq_list = params.fastq_list
+  log.info paramsSummaryLog(workflow)
+
   if ('demux' in params.steps) {
-    demux(params.run_dir, dragen_samplesheet, params.fastq_outdir)
+    fastq_list = demux(params.run_dir, params.input, params.fastq_outdir)
   }
-  if ("align" in params.steps) {
-    def samplesheet_info = Channel.fromSamplesheet(trim_samplesheet(dragen_samplesheet)).map{sample,index,index2,assay -> tuple(sample,assay)}
-    align(fastq_list, params.bam_outdir, samplesheet_info)
+
+  if ('align' in params.steps) {
+    if (params.assay) {
+      if (fastq_list) {
+        align(fastq_list, params.bam_outdir, parse_fastq_list(fastq_list).splitText())
+      }
+    }
+    else {
+      def samplesheet_info = trim_samplesheet(params.input).map{sample,index,index2,assay -> tuple(sample,params.assay)}
+      align(fastq_list, params.bam_outdir, samplesheet_info)
+    }
   }
-  if ("multiqc" in params.steps) {
+
+  if ('multiqc' in params.steps) {
     multiqc(params.fastq_outdir, params.bam_outdir)
   }
-  log.info paramsSummaryLog(workflow)
 }
-
-// if (params.validate_params) {
-//   validateParameters()
-// }
