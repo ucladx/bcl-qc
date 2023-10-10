@@ -3,23 +3,23 @@ include { validateParameters; paramsHelp; fromSamplesheet; paramsSummaryLog } fr
 
 process demux {
   input:
-  path run_dir
+  path run_name
   path samplesheet
   path fastq_outdir
   output:
-  path fastq_list
-  // Will dragen still output to e.g. /staging/hot/reads/$RUN_NAME/I10/... when we only use one samplesheet?
-  // Otherwise need to parse samplesheet filename to be able to output the correct fastq_list path
-  """
+  path "fastq_list.csv"
+
+  shell:
+  '''
   dragen --bcl-conversion-only true \
   --bcl-use-hw false \
   --bcl-only-matched-reads true \
-  --bcl-input-directory ${run_dir} \
-  --sample-sheet ${samplesheet} \
-  --output-directory ${fastq_outdir}
+  --bcl-input-directory !{params.run_dir} \
+  --sample-sheet !{samplesheet} \
+  --output-directory !{params.fastq_outdir}
 
-  echo ${fastq_outdir}$(basename ${run_dir})/Reports/fastq_list.csv
-  """
+  cat !{params.fastq_outdir}!{run_name}/Reports/fastq_list.csv > fastq_list.csv
+  '''
 }
 
 process align {
@@ -28,25 +28,15 @@ process align {
   path bam_outdir
   tuple val(sample_id), val(assay)
 
-  // assign variables dragen_install, reference_dir, targets_bed, baits_bed using config/bclqc.yaml and assay name
   script:
-  if( assay == 'pcp' ) {
+  // TODO validate assay names using samplesheet schema
+  assay_params = params[assay]
+  dragen_install = assay_params.dragen_install
+  reference_dir = assay_params.reference_dir
+  targets_bed = assay_params.targets_bed
+  baits_bed = assay_params.baits_bed
 
-  }
-  else if ( assy == 'pto') {
-
-  }
-  else if( assay == 'ces' ) {
-
-  }
-  else
-    error "Invalid assay provided: ${assay}"
-  // check dragen version (maybe just install ${dragen_install} every time?)
-  // need sudo for dragen install? e.g.
-  // sudo sh ${dragen_install}
-  """
-  mkdir ${bam_outdir}${sample_id}
-  dragen \
+  alignment_cmd = """dragen \
   --enable-map-align true \
   --enable-map-align-output true \
   --output-format BAM \
@@ -70,6 +60,17 @@ process align {
   --output-directory ${bam_outdir} \
   --output-file-prefix ${sample_id}
   """
+
+  if (assay_params.dragen_addtl_align_opts) {
+    alignment_cmd += assay_params.dragen_addtl_align_opts
+  }
+
+  shell:
+  '''
+  sh !{dragen_install}
+  mkdir !{bam_outdir}!{sample_id}
+  !{alignment_cmd}
+  '''
 }
 
 process multiqc {
@@ -77,26 +78,45 @@ process multiqc {
   path fastqs_dir
   path bams_dir
   
-  """
+  shell:
+  '''
   multiqc --force \
   --config config/multiqc_config.yaml \
-  --outdir ${bams_dir} \
-  ${bams_dir} \
-  ${fastqs_dir}
-  """
+  --outdir !{bams_dir} \
+  !{bams_dir} \
+  !{fastqs_dir}
+  '''
+}
+
+process trim_samplesheet{
+  input:
+  path samplesheet
+
+  output:
+  path 'trimmed_samplesheet.csv'
+
+  shell:
+  '''
+  awk '[BCLConvert_Data] {flag=1; next} flag' !{samplesheet} > trimmed_samplesheet.csv
+  '''
 }
 
 workflow {
-  def samplesheet_info = Channel.fromSampleSheet("input").map { sample_id, barcode1, barcode2, assay -> tuple(sample_id, assay) }
-  demux(params.run_dir, params.input) | align(params.bam_outdir, samplesheet_info) | multiqc(params.fastq_outdir, params.bam_outdir) | view
-}
-
-if (params.validate_params) {
-  validateParameters()
-}
-
-if (params.show_params_summary) {
+  def fastq_list = params.fastq_list // null if not provided
+  def dragen_samplesheet = params.input
+  if ('demux' in params.steps) {
+    demux(params.run_dir, dragen_samplesheet, params.fastq_outdir)
+  }
+  if ("align" in params.steps) {
+    def samplesheet_info = Channel.fromSamplesheet(trim_samplesheet(dragen_samplesheet)).map{sample,index,index2,assay -> tuple(sample,assay)}
+    align(fastq_list, params.bam_outdir, samplesheet_info)
+  }
+  if ("multiqc" in params.steps) {
+    multiqc(params.fastq_outdir, params.bam_outdir)
+  }
   log.info paramsSummaryLog(workflow)
 }
 
-WorkflowMain.initialise(workflow, params, log)
+// if (params.validate_params) {
+//   validateParameters()
+// }

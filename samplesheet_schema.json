@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "Sample_ID": { "type": "string" },
+      "index": { "type": "string" },
+      "index2": { "type": "string" },
+      "assay": { "type": "string" }
+    }
+  }
+}
