@@ -8,6 +8,7 @@ process demux {
   path fastq_outdir
   output:
   path "fastq_list.csv"
+  path "trimmed_samplesheet.csv"
 
   shell:
   '''
@@ -19,10 +20,13 @@ process demux {
   --output-directory !{params.fastq_outdir}
 
   cat !{params.fastq_outdir}!{run_name}/Reports/fastq_list.csv > fastq_list.csv
+  grep -A1000 'BCLConvert_Data' !{samplesheet} | tail +2 > trimmed_samplesheet.csv
   '''
 }
 
 process align {
+  maxForks 1
+
   input:
   path fastq_list
   path bam_outdir
@@ -53,7 +57,7 @@ process align {
 --soft-read-trimmers polyg,quality \
 --trim-min-quality 2 \
 --ref-dir ${reference_dir} \
---intermediate-results-dir /staging/tmp \
+--intermediate-results-dir ${params.tmpdir} \
 --qc-coverage-tag-1 target_bed \
 --qc-coverage-region-1 ${targets_bed} \
 --qc-coverage-reports-1 cov_report \
@@ -84,7 +88,8 @@ process multiqc {
   path bams_dir
   
   shell:
-  '''multiqc --force \
+  '''
+  multiqc --force \
   --config config/multiqc_config.yaml \
   --outdir !{params.bams_dir} \
   !{bams_dir} \
@@ -92,21 +97,6 @@ process multiqc {
   '''
 }
 
-process trim_samplesheet{
-  input:
-  path samplesheet
-
-  output:
-  path 'trimmed_samplesheet.csv'
-
-  shell:
-  '''
-  start_line=$(grep -n 'BCLConvert_Data' "!{samplesheet}" | cut -d: -f1)
-  if [[ -n "$start_line" ]]; then
-      sed -n "$((start_line + 1)),$ p" "!{samplesheet}" > 'trimmed_samplesheet.csv'
-  fi
-  '''
-}
 
 process parse_fastq_list {
   input:
@@ -117,16 +107,15 @@ process parse_fastq_list {
 
   shell:
   '''
-  cat !{fastq_list} | cut -d, -f2 | tail +2 > samples.txt
+  cat !{fastq_list} | cut -d, -f2 | tail +2 | uniq > samples.txt
   '''
 }
 
 workflow {
   fastq_list = params.fastq_list
   log.info paramsSummaryLog(workflow)
-
   if ('demux' in params.steps) {
-    fastq_list = demux(params.run_dir, params.input, params.fastq_outdir)
+    (fastq_list, trimmed_samplesheet) = demux(params.run_dir, params.input, params.fastq_outdir)
   }
 
   if ('align' in params.steps) {
@@ -136,8 +125,10 @@ workflow {
       }
     }
     else {
-      def samplesheet_info = trim_samplesheet(params.input).map{sample,index,index2,assay -> tuple(sample,params.assay)}
-      align(fastq_list, params.bam_outdir, samplesheet_info)
+      if (trimmed_samplesheet) {
+        def samplesheet_info = Channel.fromPath('trimmed_samplesheet.csv').map{sample,index,index2,assay -> tuple(sample,params.assay)}
+        align(fastq_list, params.bam_outdir, samplesheet_info)
+      }
     }
   }
 
