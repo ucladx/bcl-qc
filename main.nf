@@ -12,7 +12,8 @@ process demux {
 
   shell:
   '''
-  dragen --bcl-conversion-only true \
+  bcl-convert --bcl-conversion-only true \
+  --bcl-sampleproject-subdirectories true \
   --bcl-use-hw false \
   --bcl-only-matched-reads true \
   --bcl-input-directory !{params.run_dir} \
