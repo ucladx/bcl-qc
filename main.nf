@@ -12,9 +12,8 @@ process demux {
 
   shell:
   '''
-  bcl-convert --bcl-conversion-only true \
+  bcl-convert \
   --bcl-sampleproject-subdirectories true \
-  --bcl-use-hw false \
   --bcl-only-matched-reads true \
   --bcl-input-directory !{params.run_dir} \
   --sample-sheet !{samplesheet} \
@@ -92,7 +91,7 @@ process multiqc {
   '''
   multiqc --force \
   --config config/multiqc_config.yaml \
-  --outdir !{params.bams_dir} \
+  --outdir !{params.bam_outdir} \
   !{bams_dir} \
   !{fastqs_dir}
   '''
@@ -127,7 +126,7 @@ workflow {
     }
     else {
       if (trimmed_samplesheet) {
-        def samplesheet_info = Channel.fromPath('trimmed_samplesheet.csv').map{sample,index,index2,assay -> tuple(sample,params.assay)}
+        def samplesheet_info = Channel.fromPath().map{sample,index,index2,assay -> tuple(sample,params.assay)}
         align(fastq_list, params.bam_outdir, samplesheet_info)
       }
     }
