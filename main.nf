@@ -21,7 +21,7 @@ process demux {
   --sample-sheet !{samplesheet} \
   --output-directory !{params.fastq_outdir}!{run_name} \
 
-  cat !{params.fastq_outdir}!{run_name}/Reports/fastq_list.csv > fastq_list.csv
+  cp !{params.fastq_outdir}!{run_name}/Reports/fastq_list.csv fastq_list.csv
   grep -A1000 'BCLConvert_Data' !{samplesheet} | tail +2 > trimmed_samplesheet.csv
   """
 }
@@ -128,12 +128,17 @@ workflow {
   log.info paramsSummaryLog(workflow)
   if ('demux' in params.steps) {
     (fastq_list, trimmed_samplesheet) = demux(params.run_dir, params.input, params.fastq_outdir)
+    if ('align' in params.steps) {
+      sampleinfo = trimmed_samplesheet.splitCsv(header: true).map{ row -> tuple(row.sample_id, row.Sample_Project) }
+      align(fastq_list, params.bam_outdir, sampleinfo)
+    }
   }
-
-  if ('align' in params.steps) {
-    trimmed_ss = trim_samplesheet(params.input)
-    samplesheet_info = trimmed_ss.splitCsv(header: true).map{ row -> tuple(row.sample_id, row.Sample_Project) }
-    align(params.fastq_list, params.bam_outdir, samplesheet_info)
+  else if ('align' in params.steps) {
+    // implies demux has already been run, and samplesheet not necessarily provided
+    // instead require assay to be specified and parse fastq_list for sample_ids
+    samples = parse_fastq_list(fastq_list)
+    sampleinfo = samples.map{ sample_id -> tuple(sample_id, params.assay) }
+    align(params.fastq_list, params.bam_outdir, sampleinfo)
   }
 
   // if ('multiqc' in params.steps) {
