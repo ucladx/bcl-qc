@@ -6,22 +6,24 @@ process demux {
   path run_name
   path samplesheet
   path fastq_outdir
+
   output:
-  path "fastq_list.csv"
-  path "trimmed_samplesheet.csv"
+  path 'fastq_list.csv'
+  path 'trimmed_samplesheet.csv'
 
   shell:
-  '''
+  """
   bcl-convert \
+  --sample-name-column-enabled true \
   --bcl-sampleproject-subdirectories true \
   --bcl-only-matched-reads true \
   --bcl-input-directory !{params.run_dir} \
   --sample-sheet !{samplesheet} \
-  --output-directory !{params.fastq_outdir}
+  --output-directory !{params.fastq_outdir}!{run_name} \
 
   cat !{params.fastq_outdir}!{run_name}/Reports/fastq_list.csv > fastq_list.csv
   grep -A1000 'BCLConvert_Data' !{samplesheet} | tail +2 > trimmed_samplesheet.csv
-  '''
+  """
 }
 
 process align {
@@ -30,15 +32,14 @@ process align {
   input:
   path fastq_list
   path bam_outdir
-  each sample_id
+  tuple val(sample_id), val(assay)
 
   when:
   sample_id != null
 
   script:
-  // TODO validate assay names using samplesheet schema
   sample_id = sample_id.trim()
-  assay_params = params[params.assay]
+  assay_params = params[assay]
   dragen_install = assay_params.dragen_install
   reference_dir = assay_params.reference_dir
   targets_bed = assay_params.targets_bed
@@ -97,7 +98,6 @@ process multiqc {
   '''
 }
 
-
 process parse_fastq_list {
   input:
   path fastq_list
@@ -111,28 +111,32 @@ process parse_fastq_list {
   '''
 }
 
+process trim_samplesheet {
+  input:
+  path samplesheet
+
+  output:
+  path 'trimmed_samplesheet.csv'
+
+  shell:
+  '''
+  grep -A1000 'BCLConvert_Data' !{samplesheet} | tail +2 > trimmed_samplesheet.csv
+  '''
+}
+
 workflow {
-  fastq_list = params.fastq_list
   log.info paramsSummaryLog(workflow)
   if ('demux' in params.steps) {
     (fastq_list, trimmed_samplesheet) = demux(params.run_dir, params.input, params.fastq_outdir)
   }
 
   if ('align' in params.steps) {
-    if (params.assay) {
-      if (fastq_list) {
-        align(fastq_list, params.bam_outdir, parse_fastq_list(fastq_list).splitText())
-      }
-    }
-    else {
-      if (trimmed_samplesheet) {
-        def samplesheet_info = Channel.fromPath().map{sample,index,index2,assay -> tuple(sample,params.assay)}
-        align(fastq_list, params.bam_outdir, samplesheet_info)
-      }
-    }
+    trimmed_ss = trim_samplesheet(params.input)
+    samplesheet_info = trimmed_ss.splitCsv(header: true).map{ row -> tuple(row.sample_id, row.Sample_Project) }
+    align(params.fastq_list, params.bam_outdir, samplesheet_info)
   }
 
-  if ('multiqc' in params.steps) {
-    multiqc(params.fastq_outdir, params.bam_outdir)
-  }
+  // if ('multiqc' in params.steps) {
+  //   multiqc(params.fastq_outdir, params.bam_outdir)
+  // }
 }
