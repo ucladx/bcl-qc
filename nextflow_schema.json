@@ -65,6 +65,10 @@
     "force_dragen_install": {
       "type": "string"
     },
+    "multiqc_only": {
+      "type": "boolean",
+      "default": "false"
+    },
     "steps": {
       "type": "string",
       "default": "demux,align,multiqc"

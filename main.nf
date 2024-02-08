@@ -34,6 +34,9 @@ process align {
   path bam_outdir
   tuple val(sample_id), val(assay)
 
+  output:
+  val true
+
   when:
   sample_id != null
 
@@ -158,7 +161,7 @@ workflow {
     }
   }
 
-  // if ('multiqc' in params.steps) {
-  //   multiqc(params.fastq_outdir, params.bam_outdir)
-  // }
+  if ('multiqc' in params.steps && (align.out || demux.out || params.multiqc_only == true)) {
+    multiqc(params.fastq_outdir, params.bam_outdir)
+  }
 }
