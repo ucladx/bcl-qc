@@ -124,8 +124,22 @@ process trim_samplesheet {
   '''
 }
 
+process install_dragen {
+  input:
+  val(dragen_installer)
+
+  shell:
+  '''
+  sudo sh !{dragen_installer}
+  '''
+}
+
 workflow {
   log.info paramsSummaryLog(workflow)
+  // if (params.force_dragen_install != null) {
+  //   log.info "Installing dragen from installer: ${params.force_dragen_install}"
+  //   install_dragen(params.force_dragen_install)
+  // }
   if ('demux' in params.steps) {
     (fastq_list, trimmed_samplesheet) = demux(params.run_dir, params.input, params.fastq_outdir)
     if ('align' in params.steps) {
@@ -133,12 +147,15 @@ workflow {
       align(fastq_list, params.bam_outdir, sampleinfo)
     }
   }
+  // standalone alignment --- parse fastq list from file, require params.assay to be set
   else if ('align' in params.steps) {
-    // implies demux has already been run, and samplesheet not necessarily provided
-    // instead require assay to be specified and parse fastq_list for sample_ids
-    samples = parse_fastq_list(fastq_list)
-    sampleinfo = samples.map{ sample_id -> tuple(sample_id, params.assay) }
-    align(params.fastq_list, params.bam_outdir, sampleinfo)
+    if (params.assay != null && params.fastq_list != null && params.bam_outdir != null) {
+      samples = parse_fastq_list(params.fastq_list)
+      sampleinfo = samples.map{ sample_id -> tuple(sample_id, params.assay) }
+      align(params.fastq_list, params.bam_outdir, sampleinfo)
+    } else {
+      log.error "Performing standalone alignnment requires assay, fastq_list, and bam_outdir to be provided via command line or config file"
+    }
   }
 
   // if ('multiqc' in params.steps) {

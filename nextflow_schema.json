@@ -55,9 +55,14 @@
       "type": "string"
     },
     "fastq_outdir": {
-      "type": "string"
+      "type": "string",
+      "default": "/staging/hot/reads/"
     },
     "bam_outdir": {
+      "type": "string",
+      "default": "/mnt/pns/bams/"
+    },
+    "force_dragen_install": {
       "type": "string"
     },
     "steps": {
