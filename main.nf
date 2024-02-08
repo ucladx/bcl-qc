@@ -41,6 +41,7 @@ process align {
   sample_id != null
 
   script:
+  println "Aligning ${sample_id} with assay ${assay}"
   sample_id = sample_id.trim()
   assay_params = params[assay]
   dragen_install = assay_params.dragen_install
