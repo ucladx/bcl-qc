@@ -41,8 +41,7 @@ process align {
   sample_id != null
 
   script:
-  println "Aligning ${sample_id} with assay ${assay}"
-  sample_id = sample_id[0]
+  log.info "Aligning ${sample_id} with assay ${assay}"
   assay_params = params[assay]
   dragen_install = assay_params.dragen_install
   reference_dir = assay_params.reference_dir
