@@ -155,7 +155,7 @@ workflow {
     if (params.assay != null && params.fastq_list != null && params.bam_outdir != null) {
       samples = parse_fastq_list(params.fastq_list)
       // sampleinfo = Channelfrom.map{ sample_id -> tuple(sample_id, params.assay) }
-      sampleinfo = samples.splitCsv(header: false).map { sample_id -> tuple(sample_id, params.assay)}
+      sampleinfo = samples.splitCsv(header: false).map { row -> tuple(row[0], params.assay)}
       align(params.fastq_list, params.bam_outdir, sampleinfo)
     } else {
       log.error "Performing standalone alignnment requires assay, fastq_list, and bam_outdir to be provided via command line or config file"
