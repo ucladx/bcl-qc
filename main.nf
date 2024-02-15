@@ -80,8 +80,12 @@ process align {
 
   shell:
   '''
-  mkdir -p !{outdir}
-  !{alignment_cmd}
+  if [ -d !{outdir} ]; then
+    echo "Output directory !{outdir} already exists, skipping alignment for !{sample_id}"
+  else
+    mkdir -p !{outdir}
+    !{alignment_cmd}
+  fi
   '''
 }
 
