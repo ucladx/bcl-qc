@@ -68,6 +68,8 @@ process align {
 --enable-variant-caller true \
 --vc-combine-phased-variants-distance 6 \
 --vc-emit-ref-confidence GVCF \
+--vc-output-evidence-bam true \
+--vc-evidence-bam-output-haplotypes true \
 --enable-hla true \
 --fastq-list ${fastq_list} \
 --fastq-list-sample-id ${sample_id} \
