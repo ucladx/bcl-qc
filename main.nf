@@ -67,6 +67,7 @@ process align {
 --qc-coverage-ignore-overlaps true \
 --enable-variant-caller true \
 --vc-combine-phased-variants-distance 6 \
+--vc-enable-high-sensitivity-mode true \
 --vc-emit-ref-confidence GVCF \
 --vc-output-evidence-bam true \
 --vc-evidence-bam-output-haplotypes true \
