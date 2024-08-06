@@ -102,6 +102,9 @@ def align_pass(run_info):
     fastq_list = "/mnt/pns/reads/validation/pcp/fastq_list.csv"
     for sample_id in get_sample_ids(fastq_list):
             bam_output = f"{bams_dir}/{sample_id}"
+            if os.path.exists(bam_output):
+                print(f"Skipping alignment for {sample_id}: BAM already exists")
+                continue
             align(fastq_list, bam_output, run_info.bed_file, sample_id, run_info.exec_cmd)
 
 def multiqc_pass(run_info):
