@@ -71,8 +71,8 @@ def align(fastq_list, bam_output, bed_file, sample_id, exec_cmd=call):
           "--fastq-list-sample-id", sample_id,
           "--output-directory", bam_output,
           "--output-file-prefix", sample_id,
-	  "--vc-output-evidence-bam", "true",
-	  "--vc-evidence-bam-output-haplotypes", "true",
+          "--vc-output-evidence-bam", "true",
+          "--vc-evidence-bam-output-haplotypes", "true",
     ])
 
 def multiqc_cmd(fastqs_dir, bams_dir, exec_cmd=call):
