@@ -49,9 +49,9 @@ conda env create -qn bclqc -f config/conda_env.yaml
 conda activate bclqc
 ```
 
-Now you can trigger demux, alignment, and MultiQC on a sequencer run output folder as follows.
+Now you can use nextflow to trigger bcl-qc on a sequencer run output folder as follows:
 ```bash
-python bclqc.py $PWD/reads $PWD/bams $PWD/demo_run
+nextflow main.nf --run_dir $PWD/run_dir --fastq_outdir $PWD/reads --bam_outdir $PWD/bams
 ```
 
 ### Demo data
@@ -69,5 +69,5 @@ bs download run --summary --id 72750678 --output demo_run --exclude SampleSheet*
 
 You can test the demux pass on this demo data as follows and inspect the output in the new folder named `reads`:
 ```bash
-python bclqc.py -P demux $PWD/reads $PWD/bams $PWD/demo_run
+nextflow main.nf --run_dir $PWD/demo_run --fastq_outdir $PWD/reads --steps demux
 ```
