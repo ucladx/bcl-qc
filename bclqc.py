@@ -104,6 +104,8 @@ def align_pass(run_info):
         if not os.path.exists(fastq_list):
             raise Exception(f"Alignment Error: {fastq_list} does not exist")
         for sample_id in get_sample_ids(fastq_list):
+            if sample_id.startswith("SN"):
+                continue
             bam_output = f"{bams_dir}/{sample_id}"
             align(fastq_list, bam_output, run_info.bed_file, sample_id, run_info.exec_cmd)
 
