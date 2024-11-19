@@ -99,6 +99,7 @@ process multiqc {
   
   shell:
   '''
+  rm -f !{bams_dir}/*/*.wgs_*.csv
   multiqc --force \
   --config config/multiqc_config.yaml \
   --outdir !{params.bam_outdir} \
