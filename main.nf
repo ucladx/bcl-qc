@@ -134,42 +134,31 @@ process trim_samplesheet {
   '''
 }
 
-process install_dragen {
-  input:
-  val(dragen_installer)
-
-  shell:
-  '''
-  sudo sh !{dragen_installer}
-  '''
-}
-
 workflow {
   log.info paramsSummaryLog(workflow)
-  // if (params.force_dragen_install != null) {
-  //   log.info "Installing dragen from installer: ${params.force_dragen_install}"
-  //   install_dragen(params.force_dragen_install)
-  // }
+  // demux + alignment --- requires samplesheet as input
   if ('demux' in params.steps) {
     (fastq_list, trimmed_samplesheet) = demux(params.run_dir, params.input, params.fastq_outdir)
     if ('align' in params.steps) {
       sampleinfo = trimmed_samplesheet.splitCsv(header: true).map{ row -> tuple(row.sample_id, row.Sample_Project) }
       align(fastq_list, params.bam_outdir, sampleinfo)
+      if ('multiqc' in params.steps) {
+        multiqc(params.fastq_outdir, params.bam_outdir)
+      }
     }
   }
-  // standalone alignment --- parse fastq list from file, require params.assay to be set
+  // standalone alignment --- requires fastq_list and assay to be set
   else if ('align' in params.steps) {
     if (params.assay != null && params.fastq_list != null && params.bam_outdir != null) {
       samples = parse_fastq_list(params.fastq_list)
       // sampleinfo = Channelfrom.map{ sample_id -> tuple(sample_id, params.assay) }
       sampleinfo = samples.splitCsv(header: false).map { row -> tuple(row[0], params.assay)}
       align(params.fastq_list, params.bam_outdir, sampleinfo)
+      if ('multiqc' in params.steps) {
+        multiqc(params.fastq_outdir, params.bam_outdir)
+      }
     } else {
       log.error "Performing standalone alignnment requires assay, fastq_list, and bam_outdir to be provided via command line or config file"
     }
-  }
-
-  if ('multiqc' in params.steps && (align.out || demux.out || params.multiqc_only == true)) {
-    multiqc(params.fastq_outdir, params.bam_outdir)
   }
 }
