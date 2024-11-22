@@ -142,9 +142,9 @@ workflow {
     if ('align' in params.steps) {
       sampleinfo = trimmed_samplesheet.splitCsv(header: true).map{ row -> tuple(row.sample_id, row.Sample_Project) }
       align(fastq_list, params.bam_outdir, sampleinfo)
-      if ('multiqc' in params.steps) {
-        multiqc(params.fastq_outdir, params.bam_outdir)
-      }
+      // if ('multiqc' in params.steps) {
+      //   multiqc(params.fastq_outdir, params.bam_outdir)
+      // }
     }
   }
   // standalone alignment --- requires fastq_list and assay to be set
@@ -154,9 +154,9 @@ workflow {
       // sampleinfo = Channelfrom.map{ sample_id -> tuple(sample_id, params.assay) }
       sampleinfo = samples.splitCsv(header: false).map { row -> tuple(row[0], params.assay)}
       align(params.fastq_list, params.bam_outdir, sampleinfo)
-      if ('multiqc' in params.steps) {
-        multiqc(params.fastq_outdir, params.bam_outdir)
-      }
+      // if ('multiqc' in params.steps) {
+      //   multiqc(params.fastq_outdir, params.bam_outdir)
+      // }
     } else {
       log.error "Performing standalone alignnment requires assay, fastq_list, and bam_outdir to be provided via command line or config file"
     }
