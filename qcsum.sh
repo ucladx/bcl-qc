@@ -2,6 +2,7 @@
 
 cram=$1
 <<<<<<< HEAD
+<<<<<<< HEAD
 sample=$2
 out_dir=$3
 
@@ -20,17 +21,21 @@ perl qcsum_metrics.pl \
 --pipeline_version HemeDx-v2.0 \
 =======
 output=$2
+=======
+sample=$2
+>>>>>>> 9613451 (Create subdir for output)
 
 #conda activate bio
 
+mkdir -p /mnt/pns/qc/heme/$sample
+
 picard CollectHsMetrics \
 I=$cram \
-O=/mnt/pns/qc/heme/$output.hsm.txt \
+O=/mnt/pns/qc/heme/$sample.hsm.txt \
 R=/mnt/pns/tracks/ref/hg38.fa \
 BAIT_INTERVALS=/mnt/pns/tracks/goal_ucla_heme_221_merged_baits.hg38.ilist \
 TARGET_INTERVALS=/mnt/pns/tracks/hemev2_roi.interval_list
 
-sample=$output
 perl qcsum_metrics.pl \
 --prefix $sample \
 --qcfolder "/mnt/pns/qc/heme/" \
