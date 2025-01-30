@@ -16,7 +16,7 @@ TARGET_INTERVALS=/mnt/pns/tracks/hemev2_roi.interval_list
 
 perl qcsum_metrics.pl \
 --prefix $sample \
---qcfolder "/mnt/pns/qc/heme/" \
+--qcfolder "/mnt/pns/qc/heme/$sample" \
 --pipeline_version v1.0d \
 --platform NovaSeq6000 \
 --pass_min_align_pct 99.0 \
@@ -30,4 +30,3 @@ perl qcsum_metrics.pl \
 --fail_min_reads 12000000 \
 --capture goal \
 --capture_version v1.0
-
