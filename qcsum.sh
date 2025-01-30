@@ -20,18 +20,20 @@ perl qcsum_metrics.pl \
 
 #conda activate bio
 
-mkdir -p /mnt/pns/qc/heme/$sample
+out_dir=/mnt/pns/qc/heme/$sample
+
+mkdir -p $out_dir
 
 picard CollectHsMetrics \
 I=$cram \
-O=/mnt/pns/qc/heme/$sample.hsm.txt \
+O=$out_dir/$sample/$sample.hsm.txt \
 R=/mnt/pns/tracks/ref/hg38.fa \
 BAIT_INTERVALS=/mnt/pns/tracks/goal_ucla_heme_221_merged_baits.hg38.ilist \
 TARGET_INTERVALS=/mnt/pns/tracks/hemev2_roi.interval_list
 
 perl qcsum_metrics.pl \
 --prefix $sample \
---qcfolder "/mnt/pns/qc/heme/$sample" \
+--qcfolder "$out_dir/$sample" \
 --pipeline_version v1.0d \
 --platform NovaSeq6000 \
 --pass_min_align_pct 99.0 \
