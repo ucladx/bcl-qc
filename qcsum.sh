@@ -26,7 +26,7 @@ mkdir -p $out_dir
 
 picard CollectHsMetrics \
 I=$cram \
-O=$out_dir/$sample/$sample.hsm.txt \
+O=$out_dir/$sample.hsm.txt \
 R=/mnt/pns/tracks/ref/hg38.fa \
 BAIT_INTERVALS=/mnt/pns/tracks/goal_ucla_heme_221_merged_baits.hg38.ilist \
 TARGET_INTERVALS=/mnt/pns/tracks/hemev2_roi.interval_list
