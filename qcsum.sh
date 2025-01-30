@@ -26,7 +26,7 @@ output=$2
 picard CollectHsMetrics \
 I=$cram \
 O=/mnt/pns/qc/heme/$output.hsm.txt \
-R=/srv/ref/hg38.fa \
+R=/mnt/pns/ref/hg38.fa \
 BAIT_INTERVALS=/mnt/pns/tracks/goal_ucla_heme_221_merged_baits.hg38.ilist \
 TARGET_INTERVALS=/mnt/pns/tracks/hemev2_roi.interval_list
 
