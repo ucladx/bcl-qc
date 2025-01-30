@@ -1,27 +1,23 @@
 import sys
 from helpers import *
 from subprocess import call
+import argparse
 
-HELP_MSG = """BCLQC
-Usage: python3 bclqc.py [options] fastqs_dir bams_dir run_dir
+parser = argparse.ArgumentParser(description="bcl-qc pipeline")
+parser.add_argument("--run_dir", required=True, help="Directory containing the run data to be processed")
+parser.add_argument("--fastq_outdir", required=True, help="Parent directory where FASTQs will be output")
+parser.add_argument("--bam_outdir", required=True, help="Parent directory where BAMs will be output")
+parser.add_argument("--passes", nargs='+', help="Run only the specified passes", default=MAIN_PASSES)
+args = parser.parse_args()
 
-fastqs_dir is the parent directory where FASTQs will be output
-bams_dir is the parent directory where BAMs will be output
-run_dir is the directory containing the run data to be processed
+def get_arg_dirs():
+	return [args.fastq_outdir, args.bam_outdir, args.run_dir]
 
-For example:
-`python3 bclqc.py [options] /fastqs /bams /runs/210930`
-
-In this case /fastqs/210930 and /bams/210930 will be created if they don't exist,
-and FASTQs and BAMs will be written to those directories respectively.
-
-Options:
-    -P [pass1,pass2,...]    Run only the specified passes
-    -h, --help              Print this help message
-    -d, --dry-run           Dry run: print commands without executing them"""
+def get_passes():
+	return args.P
 
 DEFAULT_BED_FILE = "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed"
-DEFAULT_HUMAN_REF = "/staging/human/reference/hg38_alt_masked_graph_v2"
+HUMAN_REF = "/staging/human/reference/hg38_alt_masked_graph_v3"
 
 MAIN_PASSES = [
     "demux",
@@ -57,7 +53,7 @@ def align(fastq_list, bam_output, bed_file, sample_id, exec_cmd=call):
           "--enable-sort", "true",
           "--soft-read-trimmers", "polyg,quality",
           "--trim-min-quality", "2",
-          "--ref-dir", DEFAULT_HUMAN_REF,
+          "--ref-dir", HUMAN_REF,
           "--intermediate-results-dir", "/staging/tmp",
           "--qc-coverage-tag-1", "target_bed",
           "--qc-coverage-region-1", bed_file,

@@ -1,18 +1,19 @@
 #!/bin/bash
 
 cram=$1
-output=$2
+sample=$2
 
 #conda activate bio
 
+mkdir -p /mnt/pns/qc/heme/$sample
+
 picard CollectHsMetrics \
 I=$cram \
-O=/mnt/pns/qc/heme/$output.hsm.txt \
+O=/mnt/pns/qc/heme/$sample.hsm.txt \
 R=/mnt/pns/tracks/ref/hg38.fa \
 BAIT_INTERVALS=/mnt/pns/tracks/goal_ucla_heme_221_merged_baits.hg38.ilist \
 TARGET_INTERVALS=/mnt/pns/tracks/hemev2_roi.interval_list
 
-sample=$output
 perl qcsum_metrics.pl \
 --prefix $sample \
 --qcfolder "/mnt/pns/qc/heme/" \
