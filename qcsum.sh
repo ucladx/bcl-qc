@@ -1,8 +1,6 @@
 #!/bin/bash
 
 cram=$1
-<<<<<<< HEAD
-<<<<<<< HEAD
 sample=$2
 out_dir=$3
 
@@ -19,11 +17,6 @@ perl qcsum_metrics.pl \
 --prefix $sample \
 --qcfolder "$out_dir" \
 --pipeline_version HemeDx-v2.0 \
-=======
-output=$2
-=======
-sample=$2
->>>>>>> 9613451 (Create subdir for output)
 
 #conda activate bio
 
@@ -38,9 +31,8 @@ TARGET_INTERVALS=/mnt/pns/tracks/hemev2_roi.interval_list
 
 perl qcsum_metrics.pl \
 --prefix $sample \
---qcfolder "/mnt/pns/qc/heme/" \
+--qcfolder "/mnt/pns/qc/heme/$sample" \
 --pipeline_version v1.0d \
->>>>>>> b92b6e8 (Add qcsum scripts)
 --platform NovaSeq6000 \
 --pass_min_align_pct 99.0 \
 --fail_min_align_pct 90.0 \
@@ -53,7 +45,3 @@ perl qcsum_metrics.pl \
 --fail_min_reads 12000000 \
 --capture goal \
 --capture_version v1.0
-<<<<<<< HEAD
-=======
-
->>>>>>> b92b6e8 (Add qcsum scripts)
