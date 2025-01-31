@@ -107,6 +107,8 @@ def qcsum(bams_dir):
               sample])
 
 def demux_pass(run_dir, fastqs_dir):
+    if os.path.exists(fastqs_dir):
+        raise Exception("Skipping demux as output dir already exists")
     call(["mkdir", "-p", fastqs_dir])
     samplesheets = get_samplesheets(run_dir)
     for samplesheet in samplesheets:
@@ -153,7 +155,7 @@ def get_sample_ids(fastq_list):
     fastq_list_df = pd.read_csv(fastq_list)
     return set(fastq_list_df['RGSM'])
 
-def parse_run_metrics(run_dir: str):
+def parse_run_metrics(run_dir):
     """
     Returns a DataFrame of `interop_imaging_table` or returns None if no data is found.
 
