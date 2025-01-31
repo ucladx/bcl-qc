@@ -126,6 +126,9 @@ def align_pass(fastqs_dir, bams_dir):
             raise Exception("Could not determine bed file for fastq list: " + fastq_list)
         for sample_id in get_sample_ids(fastq_list):
             bam_output = f"{bams_dir}/{sample_id}"
+            if os.path.exists(bam_output):
+                print(f"Skipping {sample_id} as output dir already exists")
+                continue
             align(fastq_list, bam_output, sample_id, panel)
 
 def qc_pass(run_dir, fastqs_dir, bams_dir):
