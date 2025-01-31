@@ -257,7 +257,7 @@ def bclqc_run():
     if "align" in passes:
         align_pass(fastqs_dir, bams_dir)
     if "qc" in passes:
-        qc_pass(fastqs_dir, bams_dir)
+        qc_pass(run_dir, fastqs_dir, bams_dir)
 
 if __name__ == "__main__":
     bclqc_run()
