@@ -139,7 +139,7 @@ def qc_pass(run_dir, fastqs_dir, bams_dir):
     qcsum(bams_dir)
 
 def is_samplesheet(file_name):
-    return re.search("^SampleSheet_.*\.csv$", file_name)
+    return re.search(r"^SampleSheet_.*\.csv$", file_name)
 
 def get_index(file_name):
     # assumes samplesheet format is "SampleSheet_{index}.csv"
