@@ -136,17 +136,6 @@ def qc_pass(run_dir, fastqs_dir, bams_dir):
     multiqc(fastqs_dir, bams_dir)
     qcsum(bams_dir)
 
-def get_run_name(run_dir: str):
-    """
-    Given '.../221013_A01718_0014_AHNYGGDRX2',
-    returns '221013_A01718_0014_AHNYGGDRX2'
-    """
-    split_fields = run_dir.split('/')
-    if split_fields[-1] == '':
-        return split_fields[-2]
-    else:
-        return split_fields[-1]
-
 def is_samplesheet(file_name):
     return re.search("^SampleSheet_.*\.csv$", file_name)
 
