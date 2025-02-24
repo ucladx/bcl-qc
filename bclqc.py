@@ -90,21 +90,6 @@ def run_command(cmd, executable=None, input_data=None):
         logging.error(error_message) # Log full error message
         raise # Re-raise the exception to stop pipeline execution
 
-def is_clinical_sample(sample_id):
-    """
-    Check if a sample ID is a clinical sample.
-
-    Args:
-        sample_id (str): Sample identifier.
-
-    Returns:
-        bool: True if the sample is a clinical sample, False otherwise.
-    """
-    pattern = re.compile(r'^2[0-9]?RR.*')
-    if pattern.match(sample_id) or "Positive_Control" in sample_id:
-        return True
-    return False
-
 def demux(run_dir, samplesheet, fastq_output):
     """
     Perform demultiplexing on a NovaSeq run using Dragen BCLConvert.
@@ -176,10 +161,6 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
             "--umi-metrics-interval-file", bed_file,
             "--vc-enable-umi-germline", "true",
             "--vc-enable-high-sensitivity-mode", "true",
-        ])
-    else:
-        dragen_command.extend([
-            "--enable-duplicate-marking", "true",
         ])
 
     run_command(dragen_command)
@@ -259,7 +240,7 @@ def demux_samples(run_dir, fastqs_dir):
     os.makedirs(fastqs_dir, exist_ok=True)
     samplesheets = get_samplesheets(run_dir)
     for samplesheet in samplesheets:
-        fastq_output = f"{fastqs_dir}/{get_index(samplesheet)}"
+        fastq_output = os.path.join(fastqs_dir, get_index(samplesheet))
         demux(run_dir, samplesheet, fastq_output)
     logging.info("Demux step completed")
 
@@ -470,5 +451,20 @@ def bclqc_run():
 
     logging.info("BCL QC pipeline run completed.")
 
+    logging.info("BCL QC pipeline run completed.")
+
+def parse_arguments():
+    """
+    Parses command line arguments for the bcl-qc pipeline.
+    """
+    parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
+    required_args = parser.add_argument_group('Required arguments')
+    required_args.add_argument("--run_dir", required=True, help="Directory containing the run data to be processed")
+    parser.add_argument("--fastqs_dir", help="Parent directory where FASTQs will be output")
+    parser.add_argument("--bams_dir", help="Parent directory where BAMs will be output")
+    parser.add_argument("--passes", nargs='+', help="Run only the specified passes (demux, align, qc)", default=DEF_PASSES)
+    return parser.parse_args()
+
 if __name__ == "__main__":
+    args = parse_arguments()
     bclqc_run()
