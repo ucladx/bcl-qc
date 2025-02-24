@@ -1,14 +1,18 @@
 import os
 import re
-from subprocess import call
+import subprocess
 import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
-from seaborn import scatterplot
+import seaborn as sns
 from interop import py_interop_run_metrics, py_interop_run, py_interop_table
 from numpy import zeros, float32
+import shlex  # For safely constructing shell commands
+import logging  # For more robust logging
 
+# --- Configuration ---
 HUMAN_REF = "/staging/human/reference/hg38_alt_masked_graph_v3"
+WORK_DIR_DEFAULT = "/staging/tmp" # Define default work directory
 
 # Maps barcode indices to the bed file that corresponds to the target regions for that panel
 # I10 = Pan-Cancer Panel
@@ -24,28 +28,85 @@ DEF_PASSES = [
     "qc",
 ]
 
+# Setup logging for better information and error tracking
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def run_command(cmd, executable=None, input_data=None):
+    """
+    Executes a shell command using subprocess, with enhanced error handling and logging.
+    Adjusted for Python 3.6.8 compatibility.
+
+    Args:
+        cmd (list): Command to execute as a list of strings.
+        executable (str, optional): Path to the executable if needed (e.g., 'sh' for shell scripts). Defaults to None.
+        input_data (bytes, optional): Input data to pipe to the command's stdin. Defaults to None.
+
+    Returns:
+        subprocess.CompletedProcess: Result object from subprocess.run.
+
+    Raises:
+        subprocess.CalledProcessError: If the command fails (non-zero exit code).
+    """
+    cmd_str = ' '.join(map(shlex.quote, cmd)) # Quote each argument for safety
+    logging.info(f"Running command: {cmd_str}")
+    try:
+        result = subprocess.run(
+            cmd,
+            check=True,
+            stdout=subprocess.PIPE,  # Capture stdout
+            stderr=subprocess.PIPE,  # Capture stderr
+            executable=executable,
+            input=input_data # Handle input data for piping
+        )
+        if result.stderr:
+            logging.warning(f"stderr: {result.stderr.decode()}") # Log stderr as warning, not always an error
+        return result
+    except subprocess.CalledProcessError as e:
+        error_message = f"Command failed with return code: {e.returncode}\nCommand: {cmd_str}"
+        if e.stderr:
+            error_message += f"\nStderr: {e.stderr.decode()}" # Decode stderr for readability
+        logging.error(error_message) # Log full error message
+        raise # Re-raise the exception to stop pipeline execution
+
 def demux(run_dir, samplesheet, fastq_output):
     """
-    Perform demultiplexing on a NovaSeq run using Dragen BCLConvert
-    Inputs:
-        run_dir: path to the folder containing the NovaSeq run data
-        samplesheet: path to the SampleSheet.csv to be used for this demultiplexing
-        fastq_output: path to the folder where the demultiplexed FASTQs will be written
+    Perform demultiplexing on a NovaSeq run using Dragen BCLConvert.
+
+    Args:
+        run_dir (str): Path to the folder containing the NovaSeq run data.
+        samplesheet (str): Path to the SampleSheet.csv to be used for this demultiplexing.
+        fastq_output (str): Path to the folder where the demultiplexed FASTQs will be written.
     """
-    call(["dragen",
-          "--bcl-conversion-only", "true",
-          "--bcl-use-hw", "false",
-          "--bcl-only-matched-reads", "true",
-          "--bcl-input-directory", run_dir,
-          "--sample-sheet", samplesheet,
-          "--output-directory", fastq_output])
+    logging.info(f"Starting demultiplexing for run directory: {run_dir}, samplesheet: {samplesheet}, output to: {fastq_output}")
+    demux_cmd = [
+        "dragen",
+        "--bcl-conversion-only", "true",
+        "--bcl-use-hw", "false",
+        "--bcl-only-matched-reads", "true",
+        "--bcl-input-directory", run_dir,
+        "--sample-sheet", samplesheet,
+        "--output-directory", fastq_output
+    ]
+    run_command(demux_cmd)
+    logging.info(f"Demultiplexing completed for output: {fastq_output}")
 
 def align(fastq_list, bam_output, sample_id, panel="PCP"):
+    """
+    Perform alignment and variant calling using Dragen.
+
+    Args:
+        fastq_list (str): Path to the fastq list CSV file.
+        bam_output (str): Path to the output directory for BAM/CRAM files.
+        sample_id (str): Sample identifier.
+        panel (str, optional): Sequencing panel type ('PCP' or 'HEME'). Defaults to "PCP".
+    """
+    logging.info(f"Starting alignment for sample: {sample_id}, fastq list: {fastq_list}, output to: {bam_output}, panel: {panel}")
     bed_file = BEDS[panel]
-    call(["mkdir", "-p", bam_output])
+    os.makedirs(bam_output, exist_ok=True) # Create output directory if it doesn't exist
+
     dragen_command = [
         "dragen",
-        "--intermediate-results-dir", "/staging/tmp",
+        "--intermediate-results-dir", WORK_DIR_DEFAULT, # Use default work directory
         "--enable-map-align", "true",
         "--enable-map-align-output", "true",
         "--output-format", "BAM" if panel == "PCP" else "CRAM",
@@ -66,8 +127,7 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
         "--fastq-list-sample-id", sample_id,
         "--output-directory", bam_output,
         "--output-file-prefix", sample_id,
-        "--vc-output-evidence-bam", "true",
-        "--vc-evidence-bam-output-haplotypes", "true",
+        "--enable-duplicate-marking", "true",
     ]
 
     if panel == "HEME":
@@ -80,42 +140,82 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
             "--vc-enable-umi-germline", "true",
             "--vc-enable-high-sensitivity-mode", "true",
         ])
-    else:
-        dragen_command.extend([
-            "--enable-duplicate-marking", "true",
-        ])
 
-    call(dragen_command)
+    run_command(dragen_command)
+    logging.info(f"Alignment completed for sample: {sample_id}, output: {bam_output}")
 
 def multiqc(fastqs_dir, bams_dir):
-    call(["rm", "-f", f"{bams_dir}/*/*.wgs_*.csv"]) # Remove wgs coverage reports since we only care about panel coverage
-    call(["multiqc",
-          "--force",
-          "--config", "config/multiqc_config.yaml",
-          "--outdir", bams_dir,
-           # dirs to scan
-          bams_dir,
-          fastqs_dir,
-    ])
+    """
+    Run MultiQC to aggregate QC reports.
+
+    Args:
+        fastqs_dir (str): Directory containing FASTQ files.
+        bams_dir (str): Directory containing BAM/CRAM files.
+    """
+    logging.info(f"Starting MultiQC report generation, FASTQ dir: {fastqs_dir}, BAM dir: {bams_dir}")
+    rm_cmd = ["rm", "-f", f"{bams_dir}/*/*.wgs_*.csv"] # Remove wgs coverage reports
+    run_command(rm_cmd)
+
+    multiqc_cmd = [
+        "multiqc",
+        "--force",
+        "--config", "config/multiqc_config.yaml", # Assuming config file exists at this path
+        "--outdir", bams_dir,
+        bams_dir,
+        fastqs_dir,
+    ]
+    run_command(multiqc_cmd)
+    logging.info(f"MultiQC report generation completed in: {bams_dir}")
 
 def qcsum(bams_dir):
+    """
+    Run qcsum.sh script for QC summary.
+
+    Args:
+        bams_dir (str): Directory containing BAM/CRAM files.
+    """
+    logging.info(f"Starting qcsum.sh for BAM directory: {bams_dir}")
     for sample in os.listdir(bams_dir):
-        if not os.path.isfile(f"{bams_dir}/{sample}/{sample}.cram"):
+        if not os.path.isfile(os.path.join(bams_dir, sample, f"{sample}.cram")) and not os.path.isfile(os.path.join(bams_dir, sample, f"{sample}.bam")): # Check for both cram and bam
             continue
-        call(["qcsum.sh",
-              f"{bams_dir}/{sample}/{sample}.bam",
-              sample])
+        bam_file = os.path.join(bams_dir, sample, f"{sample}.bam") # Try bam first
+        if not os.path.exists(bam_file):
+            bam_file = os.path.join(bams_dir, sample, f"{sample}.cram") # Fallback to cram if bam not found
+
+        qcsum_cmd = ["qcsum.sh", bam_file, sample]
+        run_command(qcsum_cmd, executable='/bin/bash') # Explicitly use bash for qcsum.sh
+    logging.info(f"qcsum.sh execution completed for directory: {bams_dir}")
 
 def demux_pass(run_dir, fastqs_dir):
+    """
+    Execute the demultiplexing pass.
+
+    Args:
+        run_dir (str): Path to the run directory.
+        fastqs_dir (str): Path to the FASTQ output directory.
+    """
+    logging.info("Starting demux pass")
     if os.path.exists(fastqs_dir):
-        raise Exception("Skipping demux as output dir already exists")
-    call(["mkdir", "-p", fastqs_dir])
+        error_msg = "Skipping demux as output directory already exists: " + fastqs_dir
+        logging.error(error_msg)
+        raise Exception(error_msg)
+    os.makedirs(fastqs_dir, exist_ok=True)
     samplesheets = get_samplesheets(run_dir)
     for samplesheet in samplesheets:
-        fastq_output = f"{fastqs_dir}/{get_index(samplesheet)}"
+        fastq_output = os.path.join(fastqs_dir, get_index(samplesheet))
         demux(run_dir, samplesheet, fastq_output)
+    logging.info("Demux pass completed")
 
 def align_pass(fastqs_dir, bams_dir):
+    """
+    Execute the alignment pass.
+
+    Args:
+        fastqs_dir (str): Path to the FASTQ directory.
+        bams_dir (str): Path to the BAM output directory.
+    """
+    logging.info("Starting align pass")
+
     fastq_lists = [os.path.join(root, file) for root, _, files in os.walk(fastqs_dir) for file in files if file == "fastq_list.csv"]
     for fastq_list in fastq_lists:
         if "/U5N2_I10/" in fastq_list:
@@ -123,47 +223,92 @@ def align_pass(fastqs_dir, bams_dir):
         elif "/I10/" in fastq_list:
             panel = "PCP"
         elif "/I8N2_N10/" in fastq_list:
-            continue # skip aligning exome samples
+            logging.info(f"Skipping alignment for exome samples in: {fastq_list}") # Skip exome samples
+            continue
         else:
-            raise Exception("Could not determine bed file for fastq list: " + fastq_list)
+            error_msg = "Could not determine bed file for fastq list: " + fastq_list
+            logging.error(error_msg)
+            raise Exception(error_msg)
         for sample_id in get_sample_ids(fastq_list):
-            bam_output = f"{bams_dir}/{sample_id}"
+            bam_output = os.path.join(bams_dir, sample_id)
             if os.path.exists(bam_output):
-                print(f"Skipping {sample_id} as output dir already exists")
+                logging.info(f"Skipping {sample_id} alignment as output directory already exists: {bam_output}")
                 continue
             align(fastq_list, bam_output, sample_id, panel)
+    logging.info("Align pass completed")
 
 def qc_pass(run_dir, fastqs_dir, bams_dir):
+    """
+    Execute the QC pass, including saving plots, running MultiQC and qcsum.
+
+    Args:
+        run_dir (str): Path to the run directory.
+        fastqs_dir (str): Path to the FASTQ directory.
+        bams_dir (str): Path to the BAM directory.
+    """
+    logging.info("Starting qc pass")
     save_occ_pf_plot(run_dir, bams_dir)
     multiqc(fastqs_dir, bams_dir)
     qcsum(bams_dir)
-
-def is_samplesheet(file_name):
-    return re.search(r"^SampleSheet_.*\.csv$", file_name)
+    logging.info("QC pass completed")
 
 def get_index(file_name):
-    # assumes samplesheet format is "SampleSheet_{index}.csv"
+    """
+    Extract the index from a samplesheet filename.
+
+    Args:
+        file_name (str): Samplesheet filename (e.g., "SampleSheet_I10.csv").
+
+    Returns:
+        str: The index string (e.g., "I10").
+    """
+    # Assumes samplesheet format is "SampleSheet_{index}.csv"
     return file_name.replace("SampleSheet_", "").replace(".csv", "")
 
 def get_samplesheets(run_dir):
-    samplesheets = [f for f in os.listdir(run_dir) if is_samplesheet(f)]
+    """
+    Get a list of samplesheet filenames in a directory.
+
+    Args:
+        run_dir (str): Path to the run directory.
+
+    Returns:
+        list: List of samplesheet filenames.
+
+    Raises:
+        Exception: If no samplesheets are found in the directory.
+    """
+    samplesheets = [f for f in os.listdir(run_dir) if "SampleSheet_" in f]
     if not samplesheets:
-        raise("Error: No samplesheets found in " + run_dir)
+        error_msg = "Error: No samplesheets found in " + run_dir
+        logging.error(error_msg)
+        raise Exception(error_msg)
     return samplesheets
 
 def get_sample_ids(fastq_list):
+    """
+    Extract sample IDs from a fastq list CSV file.
+
+    Args:
+        fastq_list (str): Path to the fastq_list.csv file.
+
+    Returns:
+        set: Set of unique sample IDs (RGSM column).
+    """
     fastq_list_df = pd.read_csv(fastq_list)
     return set(fastq_list_df['RGSM'])
 
 def parse_run_metrics(run_dir):
     """
-    Returns a DataFrame of `interop_imaging_table` or returns None if no data is found.
+    Parses Illumina Interop run metrics from a run directory.
 
-    More info on `interop_imaging_table` and the `interop` library:
-    http://illumina.github.io/interop/index.html
-    https://github.com/Illumina/interop
+    Args:
+        run_dir (str): Path to the Illumina run directory.
+
+    Returns:
+        pd.DataFrame or None: DataFrame of interop imaging table if data is found, None otherwise.
     """
-
+    logging.info(f"Parsing run metrics from: {run_dir}")
     # Initialize interop objects
     run_metrics = py_interop_run_metrics.run_metrics()
     valid_to_load = py_interop_run.uchar_vector(py_interop_run.MetricCount, 0)
@@ -174,15 +319,17 @@ def parse_run_metrics(run_dir):
     # Read from the run folder
     try:
         run_metrics.read(run_dir, valid_to_load)
-    except:
-        print(f"Error occured trying to open {run_dir}")
+    except Exception as e: # Catch broad exception for interop errors
+        logging.error(f"Error occurred trying to open {run_dir}: {e}")
         return None
 
     # Set up data table
     columns = py_interop_table.imaging_column_vector()
     py_interop_table.create_imaging_table_columns(run_metrics, columns)
     ncolumns = columns.size()
-    if ncolumns == 0: return None # no data
+    if ncolumns == 0:
+        logging.warning("No interop data found in run metrics.")
+        return None # no data
 
     headers = []
     for i in range(ncolumns):
@@ -203,21 +350,28 @@ def parse_run_metrics(run_dir):
         run_metrics, columns, row_offsets, data.ravel()
     )
 
+    logging.info(f"Interop run metrics parsed successfully from: {run_dir}")
     return pd.DataFrame(data, columns=headers)
 
 def save_occ_pf_plot(run_dir, output_dir):
     """
-    Saves a % Occupied x % Pass Filter scatter to `SAVE_DIR`.
+    Saves a % Occupied x % Pass Filter scatter plot to the output directory.
+
+    Args:
+        run_dir (str): Path to the Illumina run directory.
+        output_dir (str): Path to the output directory to save the plot.
     """
+    logging.info(f"Generating and saving Occupied vs Pass Filter plot for: {run_dir}, output to: {output_dir}")
     df = parse_run_metrics(run_dir)
     if df is None:
-        print("Unable to parse Interop files.")
+        logging.warning("Unable to parse Interop files, skipping plot generation.")
         return
+
     x = "% Occupied"
     y = "% Pass Filter"
     views = ["Lane"] # can add "Tile" or "Cycle" for more views
     for view in views:
-        scatterplot(
+        sns.scatterplot(
             data=df,
             x=x,
             y=y,
@@ -230,28 +384,21 @@ def save_occ_pf_plot(run_dir, output_dir):
         plt.legend(title=view, bbox_to_anchor=[1.2, 0.9])
         plt.tight_layout()
 
-        image_path = output_dir + f"/occ_pf_{view.lower()}_mqc.jpg"
-        print("saving occ pf graph to " + image_path)
+        image_path = os.path.join(output_dir, f"occ_pf_{view.lower()}_mqc.jpg")
+        logging.info(f"Saving Occupied vs Pass Filter graph to: {image_path}")
         plt.savefig(image_path, dpi=300)
         plt.close()
-
-parser = argparse.ArgumentParser(description="bcl-qc pipeline")
-parser.add_argument("--run_dir", required=True, help="Directory containing the run data to be processed")
-parser.add_argument("--fastqs_dir", required=True, help="Parent directory where FASTQs will be output")
-parser.add_argument("--bams_dir", required=True, help="Parent directory where BAMs will be output")
-parser.add_argument("--passes", nargs='+', help="Run only the specified passes", default=DEF_PASSES)
-args = parser.parse_args()
-
-def get_arg_dirs():
-    dirs = [args.run_dir, args.fastqs_dir, args.bams_dir]
-    for d in dirs:
-        if not os.path.exists(d):
-            raise Exception(f"Given directory {d} does not exist")
-    return dirs
+    logging.info(f"Occupied vs Pass Filter plot saved to: {output_dir}")
 
 def bclqc_run():
+    """
+    Main function to execute the bcl-qc pipeline based on specified passes.
+    """
     passes = args.passes
-    run_dir, fastqs_dir, bams_dir = get_arg_dirs()
+    run_dir = args.run_dir
+    fastqs_dir = args.fastqs_dir
+    bams_dir = args.bams_dir
+
     if "demux" in passes:
         demux_pass(run_dir, fastqs_dir)
     if "align" in passes:
@@ -259,5 +406,20 @@ def bclqc_run():
     if "qc" in passes:
         qc_pass(run_dir, fastqs_dir, bams_dir)
 
+    logging.info("BCL QC pipeline run completed.")
+
+def parse_arguments():
+    """
+    Parses command line arguments for the bcl-qc pipeline.
+    """
+    parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
+    required_args = parser.add_argument_group('Required arguments')
+    required_args.add_argument("--run_dir", required=True, help="Directory containing the run data to be processed")
+    parser.add_argument("--fastqs_dir", help="Parent directory where FASTQs will be output")
+    parser.add_argument("--bams_dir", help="Parent directory where BAMs will be output")
+    parser.add_argument("--passes", nargs='+', help="Run only the specified passes (demux, align, qc)", default=DEF_PASSES)
+    return parser.parse_args()
+
 if __name__ == "__main__":
+    args = parse_arguments()
     bclqc_run()
