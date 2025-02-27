@@ -28,7 +28,6 @@ DEF_PASSES = [
     "qc",
 ]
 
-# Setup logging for better information and error tracking
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def run_command(cmd, executable=None, input_data=None):
@@ -102,11 +101,11 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
     """
     logging.info(f"Starting alignment for sample: {sample_id}, fastq list: {fastq_list}, output to: {bam_output}, panel: {panel}")
     bed_file = BEDS[panel]
-    os.makedirs(bam_output, exist_ok=True) # Create output directory if it doesn't exist
+    os.makedirs(bam_output, exist_ok=True)
 
     dragen_command = [
         "dragen",
-        "--intermediate-results-dir", WORK_DIR_DEFAULT, # Use default work directory
+        "--intermediate-results-dir", WORK_DIR_DEFAULT,
         "--enable-map-align", "true",
         "--enable-map-align-output", "true",
         "--output-format", "BAM" if panel == "PCP" else "CRAM",
@@ -127,7 +126,6 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
         "--fastq-list-sample-id", sample_id,
         "--output-directory", bam_output,
         "--output-file-prefix", sample_id,
-        "--enable-duplicate-marking", "true",
     ]
 
     if panel == "HEME":
@@ -139,6 +137,10 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
             "--umi-metrics-interval-file", bed_file,
             "--vc-enable-umi-germline", "true",
             "--vc-enable-high-sensitivity-mode", "true",
+        ])
+    else:
+        dragen_command.extend([
+            "--enable-duplicate-marking", "true",
         ])
 
     run_command(dragen_command)
@@ -153,7 +155,7 @@ def multiqc(fastqs_dir, bams_dir):
         bams_dir (str): Directory containing BAM/CRAM files.
     """
     logging.info(f"Starting MultiQC report generation, FASTQ dir: {fastqs_dir}, BAM dir: {bams_dir}")
-    rm_cmd = ["rm", "-f", f"{bams_dir}/*/*.wgs_*.csv"] # Remove wgs coverage reports
+    rm_cmd = ["rm", "-f", f"{bams_dir}/*/*.wgs_*.csv"] # Remove wgs coverage reports since they are irrelevant to targeted panels
     run_command(rm_cmd)
 
     multiqc_cmd = [
@@ -202,7 +204,7 @@ def demux_pass(run_dir, fastqs_dir):
     os.makedirs(fastqs_dir, exist_ok=True)
     samplesheets = get_samplesheets(run_dir)
     for samplesheet in samplesheets:
-        fastq_output = os.path.join(fastqs_dir, get_index(samplesheet))
+        fastq_output = f"{fastqs_dir}/{get_index(samplesheet)}"
         demux(run_dir, samplesheet, fastq_output)
     logging.info("Demux pass completed")
 
@@ -232,7 +234,7 @@ def align_pass(fastqs_dir, bams_dir):
         for sample_id in get_sample_ids(fastq_list):
             bam_output = os.path.join(bams_dir, sample_id)
             if os.path.exists(bam_output):
-                logging.info(f"Skipping {sample_id} alignment as output directory already exists: {bam_output}")
+                logging.info(f"Skipping alignment for {sample_id} as output directory already exists: {bam_output}")
                 continue
             align(fastq_list, bam_output, sample_id, panel)
     logging.info("Align pass completed")
@@ -263,7 +265,7 @@ def get_index(file_name):
         str: The index string (e.g., "I10").
     """
     # Assumes samplesheet format is "SampleSheet_{index}.csv"
-    return file_name.replace("SampleSheet_", "").replace(".csv", "")
+    return file_name.split('/')[-1].replace("SampleSheet_", "").replace(".csv", "")
 
 def get_samplesheets(run_dir):
     """
@@ -278,7 +280,7 @@ def get_samplesheets(run_dir):
     Raises:
         Exception: If no samplesheets are found in the directory.
     """
-    samplesheets = [f for f in os.listdir(run_dir) if "SampleSheet_" in f]
+    samplesheets = [os.path.join(run_dir, f) for f in os.listdir(run_dir) if "SampleSheet_" in f]
     if not samplesheets:
         error_msg = "Error: No samplesheets found in " + run_dir
         logging.error(error_msg)
@@ -399,6 +401,10 @@ def bclqc_run():
     fastqs_dir = args.fastqs_dir
     bams_dir = args.bams_dir
 
+    run_name = run_dir.split('/')[4]
+    fastqs_dir = fastqs_dir + run_name
+    bams_dir = bams_dir + run_name
+
     if "demux" in passes:
         demux_pass(run_dir, fastqs_dir)
     if "align" in passes:
@@ -414,9 +420,9 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
     required_args = parser.add_argument_group('Required arguments')
-    required_args.add_argument("--run_dir", required=True, help="Directory containing the run data to be processed")
-    parser.add_argument("--fastqs_dir", help="Parent directory where FASTQs will be output")
-    parser.add_argument("--bams_dir", help="Parent directory where BAMs will be output")
+    required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
+    parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output")
+    parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output")
     parser.add_argument("--passes", nargs='+', help="Run only the specified passes (demux, align, qc)", default=DEF_PASSES)
     return parser.parse_args()
 
