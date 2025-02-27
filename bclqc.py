@@ -162,6 +162,10 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
             "--vc-enable-umi-germline", "true",
             "--vc-enable-high-sensitivity-mode", "true",
         ])
+    else:
+        dragen_command.extend([
+            "--enable-duplicate-marking", "true",
+        ])
 
     run_command(dragen_command)
     logging.info(f"Alignment completed for sample: {sample_id}, output: {bam_output}")
@@ -240,7 +244,7 @@ def demux_samples(run_dir, fastqs_dir):
     os.makedirs(fastqs_dir, exist_ok=True)
     samplesheets = get_samplesheets(run_dir)
     for samplesheet in samplesheets:
-        fastq_output = os.path.join(fastqs_dir, get_index(samplesheet))
+        fastq_output = f"{fastqs_dir}/{get_index(samplesheet)}"
         demux(run_dir, samplesheet, fastq_output)
     logging.info("Demux step completed")
 
@@ -459,9 +463,9 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
     required_args = parser.add_argument_group('Required arguments')
-    required_args.add_argument("--run_dir", required=True, help="Directory containing the run data to be processed")
-    parser.add_argument("--fastqs_dir", help="Parent directory where FASTQs will be output")
-    parser.add_argument("--bams_dir", help="Parent directory where BAMs will be output")
+    required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
+    parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output")
+    parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output")
     parser.add_argument("--passes", nargs='+', help="Run only the specified passes (demux, align, qc)", default=DEF_PASSES)
     return parser.parse_args()
 
