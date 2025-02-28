@@ -184,8 +184,8 @@ def qcsum(bams_dir):
         if not os.path.exists(bam_file):
             bam_file = os.path.join(bams_dir, sample, f"{sample}.cram") # Fallback to cram if bam not found
 
-        qcsum_cmd = ["qcsum.sh", bam_file, sample]
-        run_command(qcsum_cmd, executable='/bin/bash') # Explicitly use bash for qcsum.sh
+        qcsum_cmd = ["sh", "qcsum.sh", bam_file, sample]
+        run_command(qcsum_cmd)
     logging.info(f"qcsum.sh execution completed for directory: {bams_dir}")
 
 def demux_pass(run_dir, fastqs_dir):
