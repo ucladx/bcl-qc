@@ -11,16 +11,19 @@ import shlex  # For safely constructing shell commands
 import logging  # For more robust logging
 
 # --- Configuration ---
-HUMAN_REF = "/staging/human/reference/hg38_alt_masked_graph_v3"
 WORK_DIR_DEFAULT = "/staging/tmp" # Define default work directory
 
-# Maps barcode indices to the bed file that corresponds to the target regions for that panel
-# I10 = Pan-Cancer Panel
-# U5N2_I10 = Heme Panel
+# Panel-specific config files
+
 BEDS = {
     "PCP": "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed",
     "HEME": "/mnt/pns/tracks/goal_ucla_heme_221_exon_targets.hg38.bed",
 }
+
+HUMAN_REFS = {
+    "PCP": "/staging/human/reference/hg38_alt_masked_graph_v2",
+    "HEME": "/staging/human/reference/hg38_alt_masked_graph_v3",
+} 
 
 DEF_PASSES = [
     "demux",
@@ -33,7 +36,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def run_command(cmd, executable=None, input_data=None):
     """
     Executes a shell command using subprocess, with enhanced error handling and logging.
-    Adjusted for Python 3.6.8 compatibility.
 
     Args:
         cmd (list): Command to execute as a list of strings.
@@ -101,6 +103,7 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
     """
     logging.info(f"Starting alignment for sample: {sample_id}, fastq list: {fastq_list}, output to: {bam_output}, panel: {panel}")
     bed_file = BEDS[panel]
+    human_ref = HUMAN_REFS[panel]
     os.makedirs(bam_output, exist_ok=True)
 
     dragen_command = [
@@ -113,7 +116,7 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
         "--enable-sort", "true",
         "--soft-read-trimmers", "polyg,quality",
         "--trim-min-quality", "2",
-        "--ref-dir", HUMAN_REF,
+        "--ref-dir", human_ref,
         "--qc-coverage-tag-1", "target_bed",
         "--qc-coverage-region-1", bed_file,
         "--qc-coverage-reports-1", "cov_report",
