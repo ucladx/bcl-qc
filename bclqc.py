@@ -90,6 +90,21 @@ def run_command(cmd, executable=None, input_data=None):
         logging.error(error_message) # Log full error message
         raise # Re-raise the exception to stop pipeline execution
 
+def is_clinical_sample(sample_id):
+    """
+    Check if a sample ID is a clinical sample.
+
+    Args:
+        sample_id (str): Sample identifier.
+
+    Returns:
+        bool: True if the sample is a clinical sample, False otherwise.
+    """
+    pattern = re.compile(r'^2[0-9]?RR.*')
+    if pattern.match(sample_id) or "Positive_Control" in sample_id:
+        return True
+    return False
+
 def demux(run_dir, samplesheet, fastq_output):
     """
     Perform demultiplexing on a NovaSeq run using Dragen BCLConvert.
@@ -455,8 +470,6 @@ def bclqc_run():
 
     logging.info("BCL QC pipeline run completed.")
 
-    logging.info("BCL QC pipeline run completed.")
-
 def parse_arguments():
     """
     Parses command line arguments for the bcl-qc pipeline.
@@ -466,7 +479,7 @@ def parse_arguments():
     required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
     parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output")
     parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output")
-    parser.add_argument("--passes", nargs='+', help="Run only the specified passes (demux, align, qc)", default=DEF_PASSES)
+    parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
     return parser.parse_args()
 
 if __name__ == "__main__":
