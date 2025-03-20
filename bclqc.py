@@ -25,7 +25,7 @@ HUMAN_REFS = {
     "HEME": "/staging/human/reference/hg38_alt_masked_graph_v3",
 } 
 
-DEF_PASSES = [
+DEF_STEPS = [
     "demux",
     "align",
     "qc",
@@ -68,6 +68,21 @@ def run_command(cmd, executable=None, input_data=None):
             error_message += f"\nStderr: {e.stderr.decode()}" # Decode stderr for readability
         logging.error(error_message) # Log full error message
         raise # Re-raise the exception to stop pipeline execution
+
+def is_clinical_sample(sample_id):
+    """
+    Check if a sample ID is a clinical sample.
+
+    Args:
+        sample_id (str): Sample identifier.
+
+    Returns:
+        bool: True if the sample is a clinical sample, False otherwise.
+    """
+    pattern = re.compile(r'^2[0-9]?RR.*')
+    if pattern.match(sample_id) or "Positive_Control" in sample_id:
+        return True
+    return False
 
 def demux(run_dir, samplesheet, fastq_output):
     """
@@ -191,15 +206,15 @@ def qcsum(bams_dir):
         run_command(qcsum_cmd)
     logging.info(f"qcsum.sh execution completed for directory: {bams_dir}")
 
-def demux_pass(run_dir, fastqs_dir):
+def demux_samples(run_dir, fastqs_dir):
     """
-    Execute the demultiplexing pass.
+    Execute the demultiplexing step.
 
     Args:
         run_dir (str): Path to the run directory.
         fastqs_dir (str): Path to the FASTQ output directory.
     """
-    logging.info("Starting demux pass")
+    logging.info("Starting demux step")
     if os.path.exists(fastqs_dir):
         error_msg = "Skipping demux as output directory already exists: " + fastqs_dir
         logging.error(error_msg)
@@ -209,17 +224,17 @@ def demux_pass(run_dir, fastqs_dir):
     for samplesheet in samplesheets:
         fastq_output = f"{fastqs_dir}/{get_index(samplesheet)}"
         demux(run_dir, samplesheet, fastq_output)
-    logging.info("Demux pass completed")
+    logging.info("Demux step completed")
 
-def align_pass(fastqs_dir, bams_dir):
+def align_samples(fastqs_dir, bams_dir):
     """
-    Execute the alignment pass.
+    Execute the alignment step.
 
     Args:
         fastqs_dir (str): Path to the FASTQ directory.
         bams_dir (str): Path to the BAM output directory.
     """
-    logging.info("Starting align pass")
+    logging.info("Starting align step")
 
     fastq_lists = [os.path.join(root, file) for root, _, files in os.walk(fastqs_dir) for file in files if file == "fastq_list.csv"]
     for fastq_list in fastq_lists:
@@ -235,27 +250,30 @@ def align_pass(fastqs_dir, bams_dir):
             logging.error(error_msg)
             raise Exception(error_msg)
         for sample_id in get_sample_ids(fastq_list):
-            bam_output = os.path.join(bams_dir, sample_id)
-            if os.path.exists(bam_output):
-                logging.info(f"Skipping alignment for {sample_id} as output directory already exists: {bam_output}")
-                continue
-            align(fastq_list, bam_output, sample_id, panel)
-    logging.info("Align pass completed")
+            if is_clinical_sample(sample_id):
+                bam_output = os.path.join(bams_dir, sample_id)
+                if os.path.exists(bam_output):
+                    logging.info(f"Skipping alignment for {sample_id} as output directory already exists: {bam_output}")
+                    continue
+                align(fastq_list, bam_output, sample_id, panel)
+            else:
+                logging.info(f"Skipping alignment for non-clinical sample: {sample_id}")
+    logging.info("Align step completed")
 
-def qc_pass(run_dir, fastqs_dir, bams_dir):
+def qc_samples(run_dir, fastqs_dir, bams_dir):
     """
-    Execute the QC pass, including saving plots, running MultiQC and qcsum.
+    Execute the QC step, including saving plots, running MultiQC and qcsum.
 
     Args:
         run_dir (str): Path to the run directory.
         fastqs_dir (str): Path to the FASTQ directory.
         bams_dir (str): Path to the BAM directory.
     """
-    logging.info("Starting qc pass")
+    logging.info("Starting qc step")
     save_occ_pf_plot(run_dir, bams_dir)
     multiqc(fastqs_dir, bams_dir)
     qcsum(bams_dir)
-    logging.info("QC pass completed")
+    logging.info("QC step completed")
 
 def get_index(file_name):
     """
@@ -397,9 +415,9 @@ def save_occ_pf_plot(run_dir, output_dir):
 
 def bclqc_run():
     """
-    Main function to execute the bcl-qc pipeline based on specified passes.
+    Main function to execute the bcl-qc pipeline.
     """
-    passes = args.passes
+    steps = args.steps
     run_dir = args.run_dir
     fastqs_dir = args.fastqs_dir
     bams_dir = args.bams_dir
@@ -408,12 +426,12 @@ def bclqc_run():
     fastqs_dir = fastqs_dir + run_name
     bams_dir = bams_dir + run_name
 
-    if "demux" in passes:
-        demux_pass(run_dir, fastqs_dir)
-    if "align" in passes:
-        align_pass(fastqs_dir, bams_dir)
-    if "qc" in passes:
-        qc_pass(run_dir, fastqs_dir, bams_dir)
+    if "demux" in steps:
+        demux_samples(run_dir, fastqs_dir)
+    if "align" in steps:
+        align_samples(fastqs_dir, bams_dir)
+    if "qc" in steps:
+        qc_samples(run_dir, fastqs_dir, bams_dir)
 
     logging.info("BCL QC pipeline run completed.")
 
@@ -426,7 +444,7 @@ def parse_arguments():
     required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
     parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output")
     parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output")
-    parser.add_argument("--passes", nargs='+', help="Run only the specified passes (demux, align, qc)", default=DEF_PASSES)
+    parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
     return parser.parse_args()
 
 if __name__ == "__main__":
