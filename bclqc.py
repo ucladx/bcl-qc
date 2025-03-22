@@ -31,6 +31,25 @@ DEF_STEPS = [
     "qc",
 ]
 
+QC_SUM_HEADER = (
+    "Sample,Sequencing_Platform,Pipeline_version,Alignment_QC,Coverage_QC,"
+    "Total_Reads,%Reads_Aligned,Capture,Avg_Capture_Coverage,%On/Near_Bait_Bases,"
+    "%On_Bait_Bases,FOLD_80_BASE_PENALTY,Avg_ROI_Coverage,MEDIAN_ROI_COVERAGE,"
+    "MAX_ROI_COVERAGE,%ROI_1x,%ROI_20x,%ROI_100x,%ROI_500x"
+)
+
+def parse_arguments():
+    """
+    Parses command line arguments for the bcl-qc pipeline.
+    """
+    parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
+    required_args = parser.add_argument_group('Required arguments')
+    required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
+    parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output")
+    parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output")
+    parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
+    return parser.parse_args()
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def run_command(cmd, executable=None, input_data=None):
@@ -195,15 +214,24 @@ def qcsum(bams_dir):
         bams_dir (str): Directory containing BAM/CRAM files.
     """
     logging.info(f"Starting qcsum.sh for BAM directory: {bams_dir}")
+    qcsum_files = []
     for sample in os.listdir(bams_dir):
         if not os.path.isfile(os.path.join(bams_dir, sample, f"{sample}.cram")) and not os.path.isfile(os.path.join(bams_dir, sample, f"{sample}.bam")): # Check for both cram and bam
             continue
         bam_file = os.path.join(bams_dir, sample, f"{sample}.bam") # Try bam first
         if not os.path.exists(bam_file):
             bam_file = os.path.join(bams_dir, sample, f"{sample}.cram") # Fallback to cram if bam not found
-
-        qcsum_cmd = ["sh", "qcsum.sh", bam_file, sample]
+        qcsum_cmd = ["sh", "qcsum.sh", bam_file, sample, bams_dir]
+        qcsum_files.append(f"{bams_dir}/{sample}/{sample}.qcsum.csv")
         run_command(qcsum_cmd)
+    qcsum_output = f"{bams_dir}/qcsum_mqc.csv"
+    with open(qcsum_output, "w") as outfile:
+        outfile.write(QC_SUM_HEADER + "\n")
+        for qcsum_file in qcsum_files:
+            with open(qcsum_file) as infile:
+                lines = infile.readlines()
+                outfile.writelines(lines[1:])  # Skip the first line (header) and write the QC info
+        outfile.write("\n")
     logging.info(f"qcsum.sh execution completed for directory: {bams_dir}")
 
 def demux_samples(run_dir, fastqs_dir):
@@ -417,6 +445,7 @@ def bclqc_run():
     """
     Main function to execute the bcl-qc pipeline.
     """
+    args = parse_arguments()
     steps = args.steps
     run_dir = args.run_dir
     fastqs_dir = args.fastqs_dir
@@ -435,18 +464,5 @@ def bclqc_run():
 
     logging.info("BCL QC pipeline run completed.")
 
-def parse_arguments():
-    """
-    Parses command line arguments for the bcl-qc pipeline.
-    """
-    parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
-    required_args = parser.add_argument_group('Required arguments')
-    required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
-    parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output")
-    parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output")
-    parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
-    return parser.parse_args()
-
 if __name__ == "__main__":
-    args = parse_arguments()
     bclqc_run()

@@ -2,10 +2,7 @@
 
 cram=$1
 sample=$2
-
-#conda activate bio
-
-out_dir=/mnt/pns/qc/heme/$sample
+out_dir=$3
 
 mkdir -p $out_dir
 
