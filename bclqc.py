@@ -470,18 +470,5 @@ def bclqc_run():
 
     logging.info("BCL QC pipeline run completed.")
 
-def parse_arguments():
-    """
-    Parses command line arguments for the bcl-qc pipeline.
-    """
-    parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
-    required_args = parser.add_argument_group('Required arguments')
-    required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
-    parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output")
-    parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output")
-    parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
-    return parser.parse_args()
-
 if __name__ == "__main__":
-    args = parse_arguments()
     bclqc_run()

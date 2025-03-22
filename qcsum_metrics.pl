@@ -153,11 +153,7 @@ if($MEAN_TARGET_COVERAGE < $fail_min_avgcov)
     $covqc = "FAIL";
 }
 # Print prefix (project,sample, etc. whatever is passed to the script as -p)
-<<<<<<< HEAD
 print MYFILE "$prefix,";
-=======
-print MYFILE "$prefix\t";
->>>>>>> b92b6e8 (Add qcsum scripts)
 # Now we have all data ready to be written in the qc summary file
 my $qcsumfile = $qcfolder."/".$prefix.".qcsum.txt";
 
@@ -165,7 +161,6 @@ my $qcsumfile = $qcfolder."/".$prefix.".qcsum.txt";
 open (MYFILE, ">". $qcsumfile);
 
 # Print headers
-<<<<<<< HEAD
 print MYFILE "Sample";
 print MYFILE ",Sequencing_Platform,Pipeline_version";
 print MYFILE ",Alignment_QC,Coverage_QC";
@@ -173,34 +168,16 @@ print MYFILE ",Total_Reads,%Reads_Aligned,Capture,Avg_Capture_Coverage";
 print MYFILE ",%On/Near_Bait_Bases,%On_Bait_Bases,FOLD_80_BASE_PENALTY,Avg_ROI_Coverage";
 print MYFILE ",MEDIAN_ROI_COVERAGE,MAX_ROI_COVERAGE";
 print MYFILE ",%ROI_1x,%ROI_20x,%ROI_100x,%ROI_500x";
-=======
-print MYFILE "#Sample";
-print MYFILE "\tSequencing_Platform\tPipeline_version";
-print MYFILE "\tAlignment_QC\tCoverage_QC";
-print MYFILE "\tTotal_Reads\t%Reads_Aligned\tCapture\tAvg_Capture_Coverage";
-print MYFILE "\t%On/Near_Bait_Bases\t%On_Bait_Bases\tFOLD_80_BASE_PENALTY\tAvg_ROI_Coverage";
-print MYFILE "\tMEDIAN_ROI_COVERAGE\tMAX_ROI_COVERAGE";
-print MYFILE "\t%ROI_1x\t%ROI_20x\t%ROI_100x\t%ROI_500x";
->>>>>>> b92b6e8 (Add qcsum scripts)
 print MYFILE "\n";
 
 #print sample information
 print MYFILE "$prefix";
-<<<<<<< HEAD
 print MYFILE ",$platform,$pipeline_version";
 print MYFILE ",$alignqc,$covqc";
 print MYFILE ",$TOTAL_READS,$PCT_PF_UQ_READS_ALIGNED,$capture,$MEAN_BAIT_COVERAGE";
 print MYFILE ",$PCT_SELECTED_BASES,$PCT_ON_BAIT,$FOLD_80_BASE_PENALTY,$MEAN_TARGET_COVERAGE";
 print MYFILE ",$MEDIAN_TARGET_COVERAGE,$MAX_TARGET_COVERAGE";
 print MYFILE ",$PCT_TARGET_BASES_1X,$PCT_TARGET_BASES_20X,$PCT_TARGET_BASES_100X,$PCT_TARGET_BASES_500X";
-=======
-print MYFILE "\t$platform\t$pipeline_version";
-print MYFILE "\t$alignqc\t$covqc";
-print MYFILE "\t$TOTAL_READS\t$PCT_PF_UQ_READS_ALIGNED\t$capture\t$MEAN_BAIT_COVERAGE";
-print MYFILE "\t$PCT_SELECTED_BASES\t$PCT_ON_BAIT\t$FOLD_80_BASE_PENALTY\t$MEAN_TARGET_COVERAGE";
-print MYFILE "\t$MEDIAN_TARGET_COVERAGE\t$MAX_TARGET_COVERAGE";
-print MYFILE "\t$PCT_TARGET_BASES_1X\t$PCT_TARGET_BASES_20X\t$PCT_TARGET_BASES_100X\t$PCT_TARGET_BASES_500X";
->>>>>>> b92b6e8 (Add qcsum scripts)
 print MYFILE "\n";
 
 close MYFILE or warn $! ? "Error closing the qcsum file $!"
