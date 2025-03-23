@@ -216,16 +216,21 @@ def qcsum(bams_dir):
     logging.info(f"Starting qcsum.sh for BAM directory: {bams_dir}")
     qcsum_files = []
     for sample in os.listdir(bams_dir):
-        if not os.path.isfile(os.path.join(bams_dir, sample, f"{sample}.cram")) and not os.path.isfile(os.path.join(bams_dir, sample, f"{sample}.bam")): # Check for both cram and bam
+        sample_dir = os.path.join(bams_dir, sample)
+        bam = os.path.join(sample_dir, f"{sample}.bam")
+        cram = os.path.join(sample_dir, f"{sample}.cram")
+        if os.path.exists(bam):
+            bam_file = bam
+        elif os.path.exists(cram):
+            bam_file = cram
+        else:
+            logging.warning(f"Skipping QCSum for {sample}: no BAM/CRAM file found.")
             continue
-        bam_file = os.path.join(bams_dir, sample, f"{sample}.bam") # Try bam first
-        if not os.path.exists(bam_file):
-            bam_file = os.path.join(bams_dir, sample, f"{sample}.cram") # Fallback to cram if bam not found
-        qcsum_cmd = ["sh", "qcsum.sh", bam_file, sample, bams_dir]
-        qcsum_files.append(f"{bams_dir}/{sample}/{sample}.qcsum.csv")
+        qcsum_cmd = ["sh", "qcsum.sh", bam_file, sample, sample_dir]
         run_command(qcsum_cmd)
-    qcsum_output = f"{bams_dir}/qcsum_mqc.csv"
-    with open(qcsum_output, "w") as outfile:
+        qcsum_files.append(os.path.join(sample_dir, f"{sample}.qcsum.csv"))
+    full_qcsum_output = f"{bams_dir}/qcsum_mqc.csv"
+    with open(full_qcsum_output, "w") as outfile:
         outfile.write(QC_SUM_HEADER + "\n")
         for qcsum_file in qcsum_files:
             with open(qcsum_file) as infile:
@@ -448,12 +453,9 @@ def bclqc_run():
     args = parse_arguments()
     steps = args.steps
     run_dir = args.run_dir
-    fastqs_dir = args.fastqs_dir
-    bams_dir = args.bams_dir
-
     run_name = run_dir.split('/')[4]
-    fastqs_dir = fastqs_dir + run_name
-    bams_dir = bams_dir + run_name
+    fastqs_dir = args.fastqs_dir + run_name
+    bams_dir = args.bams_dir + run_name
 
     if "demux" in steps:
         demux_samples(run_dir, fastqs_dir)
