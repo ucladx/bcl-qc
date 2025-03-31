@@ -458,13 +458,8 @@ def bclqc_run():
     steps = args.steps
     run_dir = args.run_dir
     run_name = run_dir.split('/')[4]
-<<<<<<< HEAD
     fastqs_dir = FASTQS_DIR_DEFAULT + '/' + run_name
     bams_dir = BAMS_DIR_DEFAULT + '/' + run_name
-=======
-    fastqs_dir = args.fastqs_dir + run_name
-    bams_dir = args.bams_dir + run_name
->>>>>>> 0f9a27d (Fixup qcsum paths, small refactors)
 
     if "demux" in steps:
         demux_samples(run_dir, fastqs_dir)
