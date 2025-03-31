@@ -12,7 +12,8 @@ import logging  # For more robust logging
 
 # --- Configuration ---
 WORK_DIR_DEFAULT = "/staging/tmp" # Define default work directory
-
+BAMS_DIR_DEFAULT = "/mnt/pns/bams"
+FASTQS_DIR_DEFAULT = "/staging/hot/reads"
 # Panel-specific config files
 
 BEDS = {
@@ -304,8 +305,8 @@ def qc_samples(run_dir, fastqs_dir, bams_dir):
     """
     logging.info("Starting qc step")
     save_occ_pf_plot(run_dir, bams_dir)
-    multiqc(fastqs_dir, bams_dir)
     qcsum(bams_dir)
+    multiqc(fastqs_dir, bams_dir)
     logging.info("QC step completed")
 
 def get_index(file_name):
@@ -454,8 +455,8 @@ def bclqc_run():
     steps = args.steps
     run_dir = args.run_dir
     run_name = run_dir.split('/')[4]
-    fastqs_dir = args.fastqs_dir + run_name
-    bams_dir = args.bams_dir + run_name
+    fastqs_dir = FASTQS_DIR_DEFAULT + '/' + run_name
+    bams_dir = BAMS_DIR_DEFAULT + '/' + run_name
 
     if "demux" in steps:
         demux_samples(run_dir, fastqs_dir)
