@@ -9,6 +9,7 @@ from interop import py_interop_run_metrics, py_interop_run, py_interop_table
 from numpy import zeros, float32
 import shlex  # For safely constructing shell commands
 import logging  # For more robust logging
+from multiprocessing import Pool
 
 # --- Configuration ---
 WORK_DIR_DEFAULT = "/staging/tmp" # Define default work directory
@@ -216,6 +217,7 @@ def qcsum(bams_dir):
     """
     logging.info(f"Starting qcsum.sh for BAM directory: {bams_dir}")
     qcsum_files = []
+    qcsum_cmds = []
     for sample in os.listdir(bams_dir):
         sample_dir = os.path.join(bams_dir, sample)
         bam = os.path.join(sample_dir, f"{sample}.bam")
@@ -228,10 +230,11 @@ def qcsum(bams_dir):
             logging.warning(f"Skipping QCSum for {sample}: no BAM/CRAM file found.")
             continue
         qcsum_cmd = ["sh", "qcsum.sh", bam_file, sample, sample_dir]
-        run_command(qcsum_cmd)
-        qcsum_files.append(os.path.join(sample_dir, f"{sample}.qcsum.csv"))
-    full_qcsum_output = f"{bams_dir}/qcsum_mqc.csv"
-    with open(full_qcsum_output, "w") as outfile:
+        qcsum_cmds.append(qcsum_cmd)
+        qcsum_files.append(os.path.join(sample_dir, f"{sample}.qcsum.txt"))
+    with Pool() as pool:
+        pool.map(run_command, qcsum_cmds)
+    with open(f"{bams_dir}/qcsum_mqc.csv", "w") as outfile:
         outfile.write(QC_SUM_HEADER + "\n")
         for qcsum_file in qcsum_files:
             with open(qcsum_file) as infile:
