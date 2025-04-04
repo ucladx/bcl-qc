@@ -16,7 +16,7 @@ TARGET_INTERVALS=/mnt/pns/tracks/hemev2_roi.interval_list
 perl qcsum_metrics.pl \
 --prefix $sample \
 --qcfolder "$out_dir" \
---pipeline_version v1.0d \
+--pipeline_version HemeDx-v2.0 \
 --platform NovaSeq6000 \
 --pass_min_align_pct 99.0 \
 --fail_min_align_pct 90.0 \
