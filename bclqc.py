@@ -13,6 +13,8 @@ from multiprocessing import Pool
 
 # --- Configuration ---
 WORK_DIR_DEFAULT = "/staging/tmp" # Define default work directory
+BAMS_DIR_DEFAULT = "/mnt/pns/bams/"
+FASTQS_DIR_DEFAULT = "/staging/hot/reads/"
 # Panel-specific config files
 
 BEDS = {
@@ -37,6 +39,18 @@ QC_SUM_HEADER = (
     "%On_Bait_Bases,FOLD_80_BASE_PENALTY,Avg_ROI_Coverage,MEDIAN_ROI_COVERAGE,"
     "MAX_ROI_COVERAGE,%ROI_1x,%ROI_20x,%ROI_100x,%ROI_500x"
 )
+
+def parse_arguments():
+    """
+    Parses command line arguments for the bcl-qc pipeline.
+    """
+    parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
+    required_args = parser.add_argument_group('Required arguments')
+    required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
+    parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output", default=FASTQS_DIR_DEFAULT)
+    parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output", default=BAMS_DIR_DEFAULT)
+    parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
+    return parser.parse_args()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -435,18 +449,6 @@ def save_occ_pf_plot(run_dir, output_dir):
         plt.savefig(image_path, dpi=300)
         plt.close()
     logging.info(f"Occupied vs Pass Filter plot saved to: {output_dir}")
-
-def parse_arguments():
-    """
-    Parses command line arguments for the bcl-qc pipeline.
-    """
-    parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
-    required_args = parser.add_argument_group('Required arguments')
-    required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
-    parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output", default=FASTQS_DIR_DEFAULT)
-    parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output", default=BAMS_DIR_DEFAULT)
-    parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
-    return parser.parse_args()
 
 def bclqc_run():
     """
