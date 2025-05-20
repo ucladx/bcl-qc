@@ -10,12 +10,15 @@ from numpy import zeros, float32
 import shlex  # For safely constructing shell commands
 import logging  # For more robust logging
 from multiprocessing import Pool
+import yaml
 
 # --- Configuration ---
 WORK_DIR_DEFAULT = "/staging/tmp" # Define default work directory
 BAMS_DIR_DEFAULT = "/mnt/pns/bams/"
 FASTQS_DIR_DEFAULT = "/staging/hot/reads/"
 # Panel-specific config files
+
+QCSUM_CONFIG_YAML = "config/qcsum_config.yaml"
 
 BEDS = {
     "PCP": "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed",
@@ -25,7 +28,7 @@ BEDS = {
 HUMAN_REFS = {
     "PCP": "/staging/human/reference/hg38_alt_masked_graph_v2",
     "HEME": "/staging/human/reference/hg38_alt_masked_graph_v3",
-} 
+}
 
 DEF_STEPS = [
     "demux",
@@ -33,12 +36,28 @@ DEF_STEPS = [
     "qc",
 ]
 
+SAMPLEINFO_PANEL_TO_QCSUM_PANEL = {
+    "MPN Screen Panel (JAK2, CALR, MPL)": "heme_mpn",
+    "Comprehensive Heme Panel": "heme_comp",
+    "JAK2": "heme_jak2",
+    "Peripheral Blood Lymphoma Panel": "heme_pblp",
+}
+
 QC_SUM_HEADER = (
     "Sample,Sequencing_Platform,Pipeline_version,Alignment_QC,Coverage_QC,"
     "Total_Reads,%Reads_Aligned,Capture,Avg_Capture_Coverage,%On/Near_Bait_Bases,"
     "%On_Bait_Bases,FOLD_80_BASE_PENALTY,Avg_ROI_Coverage,MEDIAN_ROI_COVERAGE,"
-    "MAX_ROI_COVERAGE,%ROI_1x,%ROI_20x,%ROI_100x,%ROI_500x"
+    "MAX_ROI_COVERAGE,%ROI_1x,%ROI_20x,%ROI_100x,%ROI_250x,%ROI_500x"
 )
+
+QCSUM_HUMAN_REF = "/mnt/pns/tracks/ref/hg38.fa"
+
+class QCSumInfo:
+    def __init__(self, panel, sample_id):
+        self.panel = SAMPLEINFO_PANEL_TO_QCSUM_PANEL.get(panel, panel)
+        self.sample_id = sample_id
+        with open(QCSUM_CONFIG_YAML) as f:
+            self.config = yaml.safe_load(f).get(self.panel, {})
 
 def parse_arguments():
     """
@@ -49,14 +68,15 @@ def parse_arguments():
     required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
     parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output", default=FASTQS_DIR_DEFAULT)
     parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output", default=BAMS_DIR_DEFAULT)
+    parser.add_argument("--sampleinfo", help="Path to the sampleinfo file for determining sample panels.")
     parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
     return parser.parse_args()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def run_command(cmd, executable=None, input_data=None):
+def exec_command(cmd, executable=None, input_data=None):
     """
-    Executes a shell command using subprocess, with enhanced error handling and logging.
+    Wrapper around subprocess.run, with enhanced error handling and logging.
 
     Args:
         cmd (list): Command to execute as a list of strings.
@@ -90,21 +110,6 @@ def run_command(cmd, executable=None, input_data=None):
         logging.error(error_message) # Log full error message
         raise # Re-raise the exception to stop pipeline execution
 
-def is_clinical_sample(sample_id):
-    """
-    Check if a sample ID is a clinical sample.
-
-    Args:
-        sample_id (str): Sample identifier.
-
-    Returns:
-        bool: True if the sample is a clinical sample, False otherwise.
-    """
-    pattern = re.compile(r'^2[0-9]?RR.*')
-    if pattern.match(sample_id) or "Positive_Control" in sample_id:
-        return True
-    return False
-
 def demux(run_dir, samplesheet, fastq_output):
     """
     Perform demultiplexing on a NovaSeq run using Dragen BCLConvert.
@@ -124,7 +129,7 @@ def demux(run_dir, samplesheet, fastq_output):
         "--sample-sheet", samplesheet,
         "--output-directory", fastq_output
     ]
-    run_command(demux_cmd)
+    exec_command(demux_cmd)
     logging.info(f"Demultiplexing completed for output: {fastq_output}")
 
 def align(fastq_list, bam_output, sample_id, panel="PCP"):
@@ -182,7 +187,7 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
             "--enable-duplicate-marking", "true",
         ])
 
-    run_command(dragen_command)
+    exec_command(dragen_command)
     logging.info(f"Alignment completed for sample: {sample_id}, output: {bam_output}")
 
 def multiqc(fastqs_dir, bams_dir):
@@ -195,7 +200,7 @@ def multiqc(fastqs_dir, bams_dir):
     """
     logging.info(f"Starting MultiQC report generation, FASTQ dir: {fastqs_dir}, BAM dir: {bams_dir}")
     rm_cmd = ["rm", "-f", f"{bams_dir}/*/*.wgs_*.csv"] # Remove wgs coverage reports since they are irrelevant to targeted panels
-    run_command(rm_cmd)
+    exec_command(rm_cmd)
 
     multiqc_cmd = [
         "multiqc",
@@ -205,10 +210,61 @@ def multiqc(fastqs_dir, bams_dir):
         bams_dir,
         fastqs_dir,
     ]
-    run_command(multiqc_cmd)
+    exec_command(multiqc_cmd)
     logging.info(f"MultiQC report generation completed in: {bams_dir}")
 
-def qcsum(bams_dir):
+def qcsum_command(bam_file, sample, sample_dir, panel):
+    """
+    Run Picard CollectHsMetrics for QC summary.
+
+    Args:
+        bam_file (str): Path to the BAM/CRAM file.
+        sample (str): Sample identifier.
+        sample_dir (str): Directory for sample-specific outputs.
+        panel (str): Sequencing panel type, based on sampleinfo.
+    """
+    logging.info(f"Running Picard CollectHsMetrics for sample: {sample}, panel: {panel}")
+    qcsum_info = QCSumInfo(panel, sample)
+    config = qcsum_info.config
+
+    bait_intervals = config.get("bait_intervals")
+    target_intervals = config.get("target_intervals")
+    output_file = os.path.join(sample_dir, f"{sample}.hsm.txt")
+
+    picard_cmd = [
+        "picard", "CollectHsMetrics",
+        "I=" + bam_file,
+        "O=" + output_file,
+        "R=" + QCSUM_HUMAN_REF,
+        "BAIT_INTERVALS=" + bait_intervals,
+        "TARGET_INTERVALS=" + target_intervals
+    ]
+    exec_command(picard_cmd)
+    logging.info(f"Picard CollectHsMetrics completed for sample: {sample}, output: {output_file}")
+    
+    perl_cmd = [
+        "perl", "qcsum_metrics.pl",
+        "--prefix", sample,
+        "--qcfolder", sample_dir,
+        "--pipeline_version", config.get["pipeline_version"],
+        "--platform", config.get["platform"],
+        "--pass_min_align_pct", config.get["pass_min_align_pct"],
+        "--fail_min_align_pct", config.get["fail_min_align_pct"],
+        "--covered", config.get["covered"],
+        "--pass_min_roi_pct", config.get["pass_min_roi_pct"],
+        "--fail_min_roi_pct", config.get["fail_min_roi_pct"],
+        "--pass_min_avgcov", config.get["pass_min_avgcov"],
+        "--fail_min_avgcov", config.get["fail_min_avgcov"],
+        "--pass_min_reads", config.get["pass_min_reads"],
+        "--fail_min_reads", config.get["fail_min_reads"],
+        "--capture", config.get["capture"],
+        "--capture_version", config.get["capture_version"]
+    ]
+    
+    exec_command(perl_cmd)
+    logging.info(f"qcsum_metrics.pl script executed for sample: {sample}, output: {output_file}")
+
+def qcsum(bams_dir, sampleinfo):
     """
     Run qcsum.sh script for QC summary.
 
@@ -216,24 +272,17 @@ def qcsum(bams_dir):
         bams_dir (str): Directory containing BAM/CRAM files.
     """
     logging.info(f"Starting qcsum.sh for BAM directory: {bams_dir}")
+    sampleinfo_df = pd.read_csv(sampleinfo, sep="\t")
+    qcsum_cmd_args = []
     qcsum_files = []
-    qcsum_cmds = []
-    for sample in os.listdir(bams_dir):
+    for _, row in sampleinfo_df.iterrows():
+        sample = row['Samples']
+        panel = row['Panel']
         sample_dir = os.path.join(bams_dir, sample)
-        bam = os.path.join(sample_dir, f"{sample}.bam")
-        cram = os.path.join(sample_dir, f"{sample}.cram")
-        if os.path.exists(bam):
-            bam_file = bam
-        elif os.path.exists(cram):
-            bam_file = cram
-        else:
-            logging.warning(f"Skipping QCSum for {sample}: no BAM/CRAM file found.")
-            continue
-        qcsum_cmd = ["sh", "qcsum.sh", bam_file, sample, sample_dir]
-        qcsum_cmds.append(qcsum_cmd)
+        qcsum_cmd_args.append((os.path.join(sample_dir, f"{sample}.cram"), sample, sample_dir, panel))
         qcsum_files.append(os.path.join(sample_dir, f"{sample}.qcsum.txt"))
     with Pool() as pool:
-        pool.map(run_command, qcsum_cmds)
+        pool.starmap(qcsum_command, qcsum_cmd_args)
     with open(f"{bams_dir}/qcsum_mqc.csv", "w") as outfile:
         outfile.write(QC_SUM_HEADER + "\n")
         for qcsum_file in qcsum_files:
@@ -287,17 +336,14 @@ def align_samples(fastqs_dir, bams_dir):
             logging.error(error_msg)
             raise Exception(error_msg)
         for sample_id in get_sample_ids(fastq_list):
-            if is_clinical_sample(sample_id):
-                bam_output = os.path.join(bams_dir, sample_id)
-                if os.path.exists(bam_output):
-                    logging.info(f"Skipping alignment for {sample_id} as output directory already exists: {bam_output}")
-                    continue
-                align(fastq_list, bam_output, sample_id, panel)
-            else:
-                logging.info(f"Skipping alignment for non-clinical sample: {sample_id}")
+            bam_output = os.path.join(bams_dir, sample_id)
+            if os.path.exists(bam_output):
+                logging.info(f"Skipping alignment for {sample_id} as output directory already exists: {bam_output}")
+                continue
+            align(fastq_list, bam_output, sample_id, panel)
     logging.info("Align step completed")
 
-def qc_samples(run_dir, fastqs_dir, bams_dir):
+def qc_samples(run_dir, fastqs_dir, bams_dir, sampleinfo):
     """
     Execute the QC step, including saving plots, running MultiQC and qcsum.
 
@@ -308,7 +354,7 @@ def qc_samples(run_dir, fastqs_dir, bams_dir):
     """
     logging.info("Starting qc step")
     save_occ_pf_plot(run_dir, bams_dir)
-    qcsum(bams_dir)
+    qcsum(bams_dir, sampleinfo)
     multiqc(fastqs_dir, bams_dir)
     logging.info("QC step completed")
 
@@ -457,6 +503,7 @@ def bclqc_run():
     args = parse_arguments()
     steps = args.steps
     run_dir = args.run_dir
+    sampleinfo = args.sampleinfo
     run_name = run_dir.split('/')[4]
     fastqs_dir = args.fastqs_dir + '/' + run_name
     bams_dir = args.bams_dir + '/' + run_name
@@ -466,7 +513,7 @@ def bclqc_run():
     if "align" in steps:
         align_samples(fastqs_dir, bams_dir)
     if "qc" in steps:
-        qc_samples(run_dir, fastqs_dir, bams_dir)
+        qc_samples(run_dir, fastqs_dir, bams_dir, sampleinfo)
 
     logging.info("BCL QC pipeline run completed.")
 

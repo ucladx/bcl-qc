@@ -16,7 +16,6 @@ my ($prefix,
     $fail_min_avgcov,
     $pass_min_reads,
     $fail_min_reads,
-    # $pass_min_contem,
     $capture,
     $capture_version,
   ) = ("") x 16;
@@ -61,8 +60,9 @@ $MIN_TARGET_COVERAGE,
 $FOLD_80_BASE_PENALTY, 
 $PCT_TARGET_BASES_1X, 
 $PCT_TARGET_BASES_20X, 
-$PCT_TARGET_BASES_100X, 
-$PCT_TARGET_BASES_500X) = ("") x 18;
+$PCT_TARGET_BASES_100X
+$PCT_TARGET_BASES_250X,
+$PCT_TARGET_BASES_500X) = ("") x 19;
 
 # Open picard hs metrics file
 open (DATA, "$hs");
@@ -96,6 +96,7 @@ while (<DATA>){
         $PCT_TARGET_BASES_1X = $line[45]*100;
         $PCT_TARGET_BASES_20X = $line[48]*100;
         $PCT_TARGET_BASES_100X = $line[52]*100;
+		$PCT_TARGET_BASES_250X = $line[53]*100;
         $PCT_TARGET_BASES_500X = $line[54]*100;
 	}
 }
@@ -130,6 +131,10 @@ if ($covered == 20)
 elsif ($covered == 100)
 {
     $cov_th = $PCT_TARGET_BASES_100X;
+}
+elsif ($covered == 250)
+{
+	$cov_th = $PCT_TARGET_BASES_250X;
 }
 elsif ($covered == 500)
 {
@@ -167,7 +172,7 @@ print MYFILE ",Alignment_QC,Coverage_QC";
 print MYFILE ",Total_Reads,%Reads_Aligned,Capture,Avg_Capture_Coverage";
 print MYFILE ",%On/Near_Bait_Bases,%On_Bait_Bases,FOLD_80_BASE_PENALTY,Avg_ROI_Coverage";
 print MYFILE ",MEDIAN_ROI_COVERAGE,MAX_ROI_COVERAGE";
-print MYFILE ",%ROI_1x,%ROI_20x,%ROI_100x,%ROI_500x";
+print MYFILE ",%ROI_1x,%ROI_20x,%ROI_100x,%ROI_250x,%ROI_500x";
 print MYFILE "\n";
 
 #print sample information
@@ -177,7 +182,7 @@ print MYFILE ",$alignqc,$covqc";
 print MYFILE ",$TOTAL_READS,$PCT_PF_UQ_READS_ALIGNED,$capture,$MEAN_BAIT_COVERAGE";
 print MYFILE ",$PCT_SELECTED_BASES,$PCT_ON_BAIT,$FOLD_80_BASE_PENALTY,$MEAN_TARGET_COVERAGE";
 print MYFILE ",$MEDIAN_TARGET_COVERAGE,$MAX_TARGET_COVERAGE";
-print MYFILE ",$PCT_TARGET_BASES_1X,$PCT_TARGET_BASES_20X,$PCT_TARGET_BASES_100X,$PCT_TARGET_BASES_500X";
+print MYFILE ",$PCT_TARGET_BASES_1X,$PCT_TARGET_BASES_20X,$PCT_TARGET_BASES_100X,$PCT_TARGET_BASES_250X,$PCT_TARGET_BASES_500X";
 print MYFILE "\n";
 
 close MYFILE or warn $! ? "Error closing the qcsum file $!"

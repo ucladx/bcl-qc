@@ -4,8 +4,6 @@ cram=$1
 sample=$2
 out_dir=$3
 
-mkdir -p $out_dir
-
 picard CollectHsMetrics \
 I=$cram \
 O=$out_dir/$sample.hsm.txt \
