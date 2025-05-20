@@ -246,19 +246,19 @@ def qcsum_command(bam_file, sample, sample_dir, panel):
         "perl", "qcsum_metrics.pl",
         "--prefix", sample,
         "--qcfolder", sample_dir,
-        "--pipeline_version", str(config.get["pipeline_version"]),
-        "--platform", str(config.get["platform"]),
-        "--pass_min_align_pct", str(config.get["pass_min_align_pct"]),
-        "--fail_min_align_pct", str(config.get["fail_min_align_pct"]),
-        "--covered", str(config.get["covered"]),
-        "--pass_min_roi_pct", str(config.get["pass_min_roi_pct"]),
-        "--fail_min_roi_pct", str(config.get["fail_min_roi_pct"]),
-        "--pass_min_avgcov", str(config.get["pass_min_avgcov"]),
-        "--fail_min_avgcov", str(config.get["fail_min_avgcov"]),
-        "--pass_min_reads", str(config.get["pass_min_reads"]),
-        "--fail_min_reads", str(config.get["fail_min_reads"]),
-        "--capture", str(config.get["capture"]),
-        "--capture_version", str(config.get["capture_version"])
+        "--pipeline_version", str(config.get("pipeline_version")),
+        "--platform", str(config.get("platform")),
+        "--pass_min_align_pct", str(config.get("pass_min_align_pct")),
+        "--fail_min_align_pct", str(config.get("fail_min_align_pct")),
+        "--covered", str(config.get("covered")),
+        "--pass_min_roi_pct", str(config.get("pass_min_roi_pct")),
+        "--fail_min_roi_pct", str(config.get("fail_min_roi_pct")),
+        "--pass_min_avgcov", str(config.get("pass_min_avgcov")),
+        "--fail_min_avgcov", str(config.get("fail_min_avgcov")),
+        "--pass_min_reads", str(config.get("pass_min_reads")),
+        "--fail_min_reads", str(config.get("fail_min_reads")),
+        "--capture", str(config.get("capture")),
+        "--capture_version", str(config.get("capture_version"))
     ]
 
     exec_command(perl_cmd)
