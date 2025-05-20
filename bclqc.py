@@ -271,7 +271,7 @@ def qcsum(bams_dir, sampleinfo):
     Args:
         bams_dir (str): Directory containing BAM/CRAM files.
     """
-    logging.info(f"Starting qcsum.sh for BAM directory: {bams_dir}")
+    logging.info(f"Starting qcsum for BAM directory: {bams_dir}")
     sampleinfo_df = pd.read_csv(sampleinfo, sep="\t")
     qcsum_cmd_args = []
     qcsum_files = []
