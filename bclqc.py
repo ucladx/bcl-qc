@@ -57,7 +57,9 @@ class QCSumInfo:
         self.panel = SAMPLEINFO_PANEL_TO_QCSUM_PANEL.get(panel, panel)
         self.sample_id = sample_id
         with open(QCSUM_CONFIG_YAML) as f:
-            self.config = yaml.safe_load(f).get(self.panel, {})
+            yaml_dict = yaml.safe_load(f).get(self.panel, {})
+            self.config = {k: str(v) for k, v in yaml_dict.items()}
+
 
 def parse_arguments():
     """
@@ -224,11 +226,10 @@ def qcsum_command(bam_file, sample, sample_dir, panel):
         panel (str): Sequencing panel type, based on sampleinfo.
     """
     logging.info(f"Running Picard CollectHsMetrics for sample: {sample}, panel: {panel}")
-    qcsum_info = QCSumInfo(panel, sample)
-    config = qcsum_info.config
+    qcsum_info = QCSumInfo(panel, sample).config
 
-    bait_intervals = config.get("bait_intervals")
-    target_intervals = config.get("target_intervals")
+    bait_intervals = qcsum_info.get("bait_intervals")
+    target_intervals = qcsum_info.get("target_intervals")
     output_file = os.path.join(sample_dir, f"{sample}.hsm.txt")
 
     picard_cmd = [
@@ -246,19 +247,19 @@ def qcsum_command(bam_file, sample, sample_dir, panel):
         "perl", "qcsum_metrics.pl",
         "--prefix", sample,
         "--qcfolder", sample_dir,
-        "--pipeline_version", str(config.get("pipeline_version")),
-        "--platform", str(config.get("platform")),
-        "--pass_min_align_pct", str(config.get("pass_min_align_pct")),
-        "--fail_min_align_pct", str(config.get("fail_min_align_pct")),
-        "--covered", str(config.get("covered")),
-        "--pass_min_roi_pct", str(config.get("pass_min_roi_pct")),
-        "--fail_min_roi_pct", str(config.get("fail_min_roi_pct")),
-        "--pass_min_avgcov", str(config.get("pass_min_avgcov")),
-        "--fail_min_avgcov", str(config.get("fail_min_avgcov")),
-        "--pass_min_reads", str(config.get("pass_min_reads")),
-        "--fail_min_reads", str(config.get("fail_min_reads")),
-        "--capture", str(config.get("capture")),
-        "--capture_version", str(config.get("capture_version"))
+        "--pipeline_version", qcsum_info.get("pipeline_version"),
+        "--platform", qcsum_info.get("platform"),
+        "--pass_min_align_pct", qcsum_info.get("pass_min_align_pct"),
+        "--fail_min_align_pct", qcsum_info.get("fail_min_align_pct"),
+        "--covered", qcsum_info.get("covered"),
+        "--pass_min_roi_pct", qcsum_info.get("pass_min_roi_pct"),
+        "--fail_min_roi_pct", qcsum_info.get("fail_min_roi_pct"),
+        "--pass_min_avgcov", qcsum_info.get("pass_min_avgcov"),
+        "--fail_min_avgcov", qcsum_info.get("fail_min_avgcov"),
+        "--pass_min_reads", qcsum_info.get("pass_min_reads"),
+        "--fail_min_reads", qcsum_info.get("fail_min_reads"),
+        "--capture", qcsum_info.get("capture"),
+        "--capture_version", qcsum_info.get("capture_version")
     ]
 
     exec_command(perl_cmd)
@@ -351,6 +352,7 @@ def qc_samples(run_dir, fastqs_dir, bams_dir, sampleinfo):
         run_dir (str): Path to the run directory.
         fastqs_dir (str): Path to the FASTQ directory.
         bams_dir (str): Path to the BAM directory.
+        sampleinfo (str): Path to sampleinfo with which to determine which BED/ilists to use for qcsum
     """
     logging.info("Starting qc step")
     save_occ_pf_plot(run_dir, bams_dir)
@@ -513,6 +515,8 @@ def bclqc_run():
     if "align" in steps:
         align_samples(fastqs_dir, bams_dir)
     if "qc" in steps:
+        if not sampleinfo:
+            logging.error("Sampleinfo file not found, cannot determine panel for QCSum.")
         qc_samples(run_dir, fastqs_dir, bams_dir, sampleinfo)
 
     logging.info("BCL QC pipeline run completed.")
