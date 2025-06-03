@@ -16,7 +16,6 @@ my ($prefix,
     $fail_min_avgcov,
     $pass_min_reads,
     $fail_min_reads,
-    # $pass_min_contem,
     $capture,
     $capture_version,
   ) = ("") x 16;
@@ -61,8 +60,9 @@ $MIN_TARGET_COVERAGE,
 $FOLD_80_BASE_PENALTY, 
 $PCT_TARGET_BASES_1X, 
 $PCT_TARGET_BASES_20X, 
-$PCT_TARGET_BASES_100X, 
-$PCT_TARGET_BASES_500X) = ("") x 18;
+$PCT_TARGET_BASES_100X,
+$PCT_TARGET_BASES_250X,
+$PCT_TARGET_BASES_500X) = ("") x 19;
 
 # Open picard hs metrics file
 open (DATA, "$hs");
@@ -96,6 +96,7 @@ while (<DATA>){
         $PCT_TARGET_BASES_1X = $line[45]*100;
         $PCT_TARGET_BASES_20X = $line[48]*100;
         $PCT_TARGET_BASES_100X = $line[52]*100;
+		$PCT_TARGET_BASES_250X = $line[53]*100;
         $PCT_TARGET_BASES_500X = $line[54]*100;
 	}
 }
@@ -103,23 +104,14 @@ while (<DATA>){
 # DETERMINE ALIGNMENT QC (PASS, WARN, FAIL)
 my $alignqc = "PASS";
 
-if($PCT_PF_UQ_READS_ALIGNED < $pass_min_align_pct)
-{
-    $alignqc = "WARN";
-}
 if($PCT_PF_UQ_READS_ALIGNED < $fail_min_align_pct)
 {
     $alignqc = "FAIL";
-}
-if($TOTAL_READS < $pass_min_reads)
-{
-    $alignqc = "WARN";
 }
 if($TOTAL_READS < $fail_min_reads)
 {
     $alignqc = "FAIL";
 }
-
 
 # DETERMINE COVERAGE QC (PASS, WARN, FAIL)
 my $cov_th = "";
@@ -131,22 +123,19 @@ elsif ($covered == 100)
 {
     $cov_th = $PCT_TARGET_BASES_100X;
 }
+elsif ($covered == 250)
+{
+	$cov_th = $PCT_TARGET_BASES_250X;
+}
 elsif ($covered == 500)
 {
     $cov_th = $PCT_TARGET_BASES_500X;
 }
+
 my $covqc = "PASS";
-if($cov_th < $pass_min_roi_pct)
-{
-    $covqc = "WARN";
-}
 if($cov_th < $fail_min_roi_pct)
 {
     $covqc = "FAIL";
-}
-if($MEAN_TARGET_COVERAGE < $pass_min_avgcov)
-{
-    $covqc = "WARN";
 }
 if($MEAN_TARGET_COVERAGE < $fail_min_avgcov)
 {
@@ -167,7 +156,7 @@ print MYFILE ",Alignment_QC,Coverage_QC";
 print MYFILE ",Total_Reads,%Reads_Aligned,Capture,Avg_Capture_Coverage";
 print MYFILE ",%On/Near_Bait_Bases,%On_Bait_Bases,FOLD_80_BASE_PENALTY,Avg_ROI_Coverage";
 print MYFILE ",MEDIAN_ROI_COVERAGE,MAX_ROI_COVERAGE";
-print MYFILE ",%ROI_1x,%ROI_20x,%ROI_100x,%ROI_500x";
+print MYFILE ",%ROI_1x,%ROI_20x,%ROI_100x,%ROI_250x,%ROI_500x";
 print MYFILE "\n";
 
 #print sample information
@@ -177,7 +166,7 @@ print MYFILE ",$alignqc,$covqc";
 print MYFILE ",$TOTAL_READS,$PCT_PF_UQ_READS_ALIGNED,$capture,$MEAN_BAIT_COVERAGE";
 print MYFILE ",$PCT_SELECTED_BASES,$PCT_ON_BAIT,$FOLD_80_BASE_PENALTY,$MEAN_TARGET_COVERAGE";
 print MYFILE ",$MEDIAN_TARGET_COVERAGE,$MAX_TARGET_COVERAGE";
-print MYFILE ",$PCT_TARGET_BASES_1X,$PCT_TARGET_BASES_20X,$PCT_TARGET_BASES_100X,$PCT_TARGET_BASES_500X";
+print MYFILE ",$PCT_TARGET_BASES_1X,$PCT_TARGET_BASES_20X,$PCT_TARGET_BASES_100X,$PCT_TARGET_BASES_250X,$PCT_TARGET_BASES_500X";
 print MYFILE "\n";
 
 close MYFILE or warn $! ? "Error closing the qcsum file $!"
