@@ -104,23 +104,14 @@ while (<DATA>){
 # DETERMINE ALIGNMENT QC (PASS, WARN, FAIL)
 my $alignqc = "PASS";
 
-if($PCT_PF_UQ_READS_ALIGNED < $pass_min_align_pct)
-{
-    $alignqc = "WARN";
-}
 if($PCT_PF_UQ_READS_ALIGNED < $fail_min_align_pct)
 {
     $alignqc = "FAIL";
-}
-if($TOTAL_READS < $pass_min_reads)
-{
-    $alignqc = "WARN";
 }
 if($TOTAL_READS < $fail_min_reads)
 {
     $alignqc = "FAIL";
 }
-
 
 # DETERMINE COVERAGE QC (PASS, WARN, FAIL)
 my $cov_th = "";
@@ -140,18 +131,11 @@ elsif ($covered == 500)
 {
     $cov_th = $PCT_TARGET_BASES_500X;
 }
+
 my $covqc = "PASS";
-if($cov_th < $pass_min_roi_pct)
-{
-    $covqc = "WARN";
-}
 if($cov_th < $fail_min_roi_pct)
 {
     $covqc = "FAIL";
-}
-if($MEAN_TARGET_COVERAGE < $pass_min_avgcov)
-{
-    $covqc = "WARN";
 }
 if($MEAN_TARGET_COVERAGE < $fail_min_avgcov)
 {
