@@ -72,7 +72,8 @@ class QCSumInfo:
                 if target_intervals and bait_intervals:
                     yaml_dict["target_intervals"] = target_intervals
                     yaml_dict["bait_intervals"] = bait_intervals
-            yaml_dict = yaml_obj.get(self.panel, {})
+            else:
+                yaml_dict = yaml_obj.get(self.panel, {})
             return {k: str(v) for k, v in yaml_dict.items()}
 
 def parse_arguments():
@@ -84,7 +85,7 @@ def parse_arguments():
     required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
     parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output", default=FASTQS_DIR_DEFAULT)
     parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output", default=BAMS_DIR_DEFAULT)
-    parser.add_argument("--sampleinfo", help="Path to the sampleinfo file for determining sample panels.")
+    parser.add_argument("--sampleinfo", help="Path to the sampleinfo file for determining QC parameters.")
     parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
     return parser.parse_args()
 
