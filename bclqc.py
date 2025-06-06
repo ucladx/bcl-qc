@@ -26,7 +26,7 @@ BEDS = {
 }
 
 HUMAN_REFS = {
-    "PCP": "/staging/human/reference/hg38_alt_masked_graph_v2",
+    "PCP": "/staging/human/reference/hg38_alt_masked_graph_v3",
     "HEME": "/staging/human/reference/hg38_alt_masked_graph_v3",
 }
 
@@ -171,7 +171,7 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
         "--intermediate-results-dir", WORK_DIR_DEFAULT,
         "--enable-map-align", "true",
         "--enable-map-align-output", "true",
-        "--output-format", "BAM" if panel == "PCP" else "CRAM",
+        "--output-format", "CRAM",
         "--generate-sa-tags", "true",
         "--enable-sort", "true",
         "--soft-read-trimmers", "polyg,quality",
