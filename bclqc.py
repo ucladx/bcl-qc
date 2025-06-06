@@ -40,6 +40,8 @@ SAMPLEINFO_PANEL_TO_QCSUM_PANEL = {
     "Comprehensive Heme Panel": "heme_comp",
     "MPN Screen Panel (JAK2, CALR, MPL)": "heme_mpn",
     "JAK2": "heme_jak2",
+    "Tumor": "pcp_tumor",
+    "Normal": "pcp_normal",
 }
 
 QC_SUM_HEADER = (
@@ -293,7 +295,10 @@ def qcsum(bams_dir, sampleinfo):
     qcsum_files = []
     for _, row in sampleinfo_df.iterrows():
         sample = row['Samples']
-        panel = row['Panel']
+        if row.get('Panel') is not None:
+            panel = row['Panel']
+        elif row.get('Tumor') is not None:
+            panel = row['Tumor']
         sample_dir = os.path.join(bams_dir, sample)
         qcsum_cmd_args.append((os.path.join(sample_dir, f"{sample}.cram"), sample, sample_dir, panel))
         qcsum_files.append(os.path.join(sample_dir, f"{sample}.qcsum.txt"))
