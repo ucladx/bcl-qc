@@ -257,9 +257,13 @@ def qcsum_command(bam_file, sample, sample_dir, panel):
         "BAIT_INTERVALS=" + bait_intervals,
         "TARGET_INTERVALS=" + target_intervals
     ]
-    exec_command(picard_cmd)
-    logging.info(f"Picard CollectHsMetrics completed for sample: {sample}, output: {output_file}")
-    
+
+    if os.path.exists(output_file):
+        logging.info(f"Skipping Picard CollectHsMetrics for {sample} as output file already exists: {output_file}")
+    else:
+        exec_command(picard_cmd)
+        logging.info(f"Picard CollectHsMetrics completed for sample: {sample}, output: {output_file}")
+
     perl_cmd = [
         "perl", "qcsum_metrics.pl",
         "--prefix", sample,
