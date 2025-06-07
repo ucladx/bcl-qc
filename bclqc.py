@@ -294,14 +294,14 @@ def qcsum(bams_dir, sampleinfo):
     qcsum_cmd_args = []
     qcsum_files = []
     for _, row in sampleinfo_df.iterrows():
-        sample = row['Samples']
-        if row.get('Panel') is not None:
-            panel = row['Panel']
-        elif row.get('Tumor') is not None:
-            panel = row['Tumor']
-        sample_dir = os.path.join(bams_dir, sample)
-        qcsum_cmd_args.append((os.path.join(sample_dir, f"{sample}.cram"), sample, sample_dir, panel))
-        qcsum_files.append(os.path.join(sample_dir, f"{sample}.qcsum.txt"))
+        sample_id = row['Samples']
+        panel = row.get('Panel', row.get('Tumor')) # "Panel" for Heme, "Tumor" for PCP
+        bam_path = row.get('BAM Path')  # Use 'BAM Path' column from sampleinfo
+        output_dir = os.path.join(bams_dir, sample_id)
+        if not os.path.exists(output_dir): # output qc metrics into this run's directory even if sample is from a different run
+            os.makedirs(output_dir, exist_ok=True)
+        qcsum_cmd_args.append(bam_path, sample_id, output_dir, panel)
+        qcsum_files.append(os.path.join(output_dir, f"{sample_id}.qcsum.txt"))
     with Pool() as pool:
         pool.starmap(qcsum_command, qcsum_cmd_args)
     with open(f"{bams_dir}/qcsum_mqc.csv", "w") as outfile:
