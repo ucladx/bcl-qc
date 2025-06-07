@@ -300,7 +300,7 @@ def qcsum(bams_dir, sampleinfo):
         output_dir = os.path.join(bams_dir, sample_id)
         if not os.path.exists(output_dir): # output qc metrics into this run's directory even if sample is from a different run
             os.makedirs(output_dir, exist_ok=True)
-        qcsum_cmd_args.append(bam_path, sample_id, output_dir, panel)
+        qcsum_cmd_args.append((bam_path, sample_id, output_dir, panel))
         qcsum_files.append(os.path.join(output_dir, f"{sample_id}.qcsum.txt"))
     with Pool() as pool:
         pool.starmap(qcsum_command, qcsum_cmd_args)
