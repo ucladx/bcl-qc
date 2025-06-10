@@ -88,6 +88,7 @@ def parse_arguments():
     parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output", default=FASTQS_DIR_DEFAULT)
     parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output", default=BAMS_DIR_DEFAULT)
     parser.add_argument("--sampleinfo", help="Path to the sampleinfo file for determining QC parameters.")
+    parser.add_argument("--sample-id", help="Sample ID to process (optional, for single sample runs).")
     parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
     return parser.parse_args()
 
@@ -244,7 +245,6 @@ def qcsum_command(bam_file, sample, sample_dir, panel):
     """
     logging.info(f"Running Picard CollectHsMetrics for sample: {sample}, panel: {panel}")
     qcsum_info = QCSumInfo(panel, sample).config
-
     bait_intervals = qcsum_info.get("bait_intervals")
     target_intervals = qcsum_info.get("target_intervals")
     output_file = os.path.join(sample_dir, f"{sample}.hsm.txt")
@@ -337,6 +337,25 @@ def demux_samples(run_dir, fastqs_dir):
         demux(run_dir, samplesheet, fastq_output)
     logging.info("Demux step completed")
 
+def fastq_list_to_panel(fastq_list):
+    """
+    Determine the panel type from the fastq list path.
+
+    Args:
+        fastq_list (str): Path to the fastq list CSV file.
+
+    Returns:
+        str: Panel type ('PCP' or 'HEME').
+    """
+    if "/U5N2_I10/" in fastq_list:
+        return "HEME"
+    elif "/I10/" in fastq_list:
+        return "PCP"
+    elif "/I8N2_N10/" in fastq_list:
+        return None  # Exome samples, skip alignment
+    else:
+        raise ValueError("Could not determine panel type from fastq list: " + fastq_list)
+
 def align_samples(fastqs_dir, bams_dir):
     """
     Execute the alignment step.
@@ -349,17 +368,9 @@ def align_samples(fastqs_dir, bams_dir):
 
     fastq_lists = [os.path.join(root, file) for root, _, files in os.walk(fastqs_dir) for file in files if file == "fastq_list.csv"]
     for fastq_list in fastq_lists:
-        if "/U5N2_I10/" in fastq_list:
-            panel = "HEME"
-        elif "/I10/" in fastq_list:
-            panel = "PCP"
-        elif "/I8N2_N10/" in fastq_list:
-            logging.info(f"Skipping alignment for exome samples in: {fastq_list}") # Skip exome samples
+        panel = fastq_list_to_panel(fastq_list)
+        if not panel:
             continue
-        else:
-            error_msg = "Could not determine bed file for fastq list: " + fastq_list
-            logging.error(error_msg)
-            raise Exception(error_msg)
         for sample_id in get_sample_ids(fastq_list):
             bam_output = os.path.join(bams_dir, sample_id)
             if os.path.exists(bam_output):
@@ -522,6 +533,11 @@ def save_occ_pf_plot(run_dir, output_dir):
         plt.close()
     logging.info(f"Occupied vs Pass Filter plot saved to: {output_dir}")
 
+def align_by_sample(fastqs_dir, bams_dir, sample_id):
+    fastq_list = os.path.join(fastqs_dir, "I10/Reports/fastq_list.csv")
+    panel = fastq_list_to_panel(fastq_list)
+    align(fastq_list, bams_dir, sample_id, panel)
+
 def bclqc_run():
     """
     Main function to execute the bcl-qc pipeline.
@@ -538,6 +554,8 @@ def bclqc_run():
         demux_samples(run_dir, fastqs_dir)
     if "align" in steps:
         align_samples(fastqs_dir, bams_dir)
+    elif "align-by-sample" in steps:
+        align_by_sample(fastqs_dir, bams_dir, args.sample_id)
     if "qc" in steps:
         if not sampleinfo:
             logging.error("Sampleinfo file not found, cannot determine panel for QCSum.")
