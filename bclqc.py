@@ -13,21 +13,21 @@ from multiprocessing import Pool
 import yaml
 
 # --- Configuration ---
-WORK_DIR_DEFAULT = "/staging/tmp" # Define default work directory
 BAMS_DIR_DEFAULT = "/mnt/pns/bams/"
 FASTQS_DIR_DEFAULT = "/staging/hot/reads/"
-# Panel-specific config files
 
+# Panel-specific config files
 QCSUM_CONFIG_YAML = "config/qcsum_config.yaml"
 
-BEDS = {
-    "PCP": "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed",
-    "HEME": "/mnt/pns/tracks/goal_ucla_heme_221_exon_targets.hg38.bed",
-}
-
-HUMAN_REFS = {
-    "PCP": "/staging/human/reference/hg38_alt_masked_graph_v3",
-    "HEME": "/staging/human/reference/hg38_alt_masked_graph_v3",
+PANEL_CONFIG = {
+    "PCP": {
+        "BED": "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed",
+        "HUMAN_REF": "/staging/human/reference/hg38_alt_masked_graph_v3",
+    },
+    "HEME": {
+        "BED": "/mnt/pns/tracks/goal_ucla_heme_221_exon_targets.hg38.bed",
+        "HUMAN_REF": "/staging/human/reference/hg38_alt_masked_graph_v3",
+    }
 }
 
 DEF_STEPS = [
@@ -51,7 +51,7 @@ QC_SUM_HEADER = (
     "MAX_ROI_COVERAGE,%ROI_1x,%ROI_20x,%ROI_100x,%ROI_250x,%ROI_500x"
 )
 
-QCSUM_HUMAN_REF = "/mnt/pns/tracks/ref/hg38.fa"
+PICARD_REF = "/mnt/pns/tracks/ref/hg38.fa"
 
 class QCSumInfo:
     def __init__(self, panel, sample_id):
@@ -162,13 +162,14 @@ def align(fastq_list, bam_output, sample_id, panel="PCP"):
         panel (str, optional): Sequencing panel type ('PCP' or 'HEME'). Defaults to "PCP".
     """
     logging.info(f"Starting alignment for sample: {sample_id}, fastq list: {fastq_list}, output to: {bam_output}, panel: {panel}")
-    bed_file = BEDS[panel]
-    human_ref = HUMAN_REFS[panel]
+    config = PANEL_CONFIG.get(panel)
+    bed_file = config.get("BED")
+    human_ref = config.get("HUMAN_REF")
     os.makedirs(bam_output, exist_ok=True)
 
     dragen_command = [
         "dragen",
-        "--intermediate-results-dir", WORK_DIR_DEFAULT,
+        "--intermediate-results-dir", "/staging/tmp",
         "--enable-map-align", "true",
         "--enable-map-align-output", "true",
         "--output-format", "CRAM",
@@ -253,7 +254,7 @@ def qcsum_command(bam_file, sample, sample_dir, panel):
         "picard", "CollectHsMetrics",
         "I=" + bam_file,
         "O=" + output_file,
-        "R=" + QCSUM_HUMAN_REF,
+        "R=" + PICARD_REF,
         "BAIT_INTERVALS=" + bait_intervals,
         "TARGET_INTERVALS=" + target_intervals
     ]
