@@ -15,10 +15,12 @@ import yaml
 # --- Configuration ---
 BAMS_DIR_DEFAULT = "/mnt/pns/bams/"
 FASTQS_DIR_DEFAULT = "/staging/hot/reads/"
+PICARD_REF = "/mnt/pns/tracks/ref/hg38.fa"
+DEFAULT_BATCH_STEPS = ["demux", "align", "qc"]
 
 # Panel-specific config files
-QCSUM_CONFIG_YAML = "config/qcsum_config.yaml"
-
+QCSUM_CONFIG = "config/qcsum_config.yaml"
+MULTIQC_CONFIG = "config/multiqc_config.yaml"
 PANEL_CONFIG = {
     "PCP": {
         "BED": "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed",
@@ -29,12 +31,6 @@ PANEL_CONFIG = {
         "HUMAN_REF": "/staging/human/reference/hg38_alt_masked_graph_v3",
     }
 }
-
-DEF_STEPS = [
-    "demux",
-    "align",
-    "qc",
-]
 
 SAMPLEINFO_PANEL_TO_QCSUM_PANEL = {
     "Comprehensive Heme Panel": "heme_comp",
@@ -51,47 +47,15 @@ QC_SUM_HEADER = (
     "MAX_ROI_COVERAGE,%ROI_1x,%ROI_20x,%ROI_100x,%ROI_250x,%ROI_500x"
 )
 
-PICARD_REF = "/mnt/pns/tracks/ref/hg38.fa"
-
-class QCSumInfo:
-    def __init__(self, panel, sample_id):
-        self.panel = SAMPLEINFO_PANEL_TO_QCSUM_PANEL.get(panel, panel)
-        self.sample_id = sample_id
-        self.config = self.get_config()
-
-    def get_config(self):
-        with open(QCSUM_CONFIG_YAML) as f:
-            yaml_obj = yaml.safe_load(f)
-            if not yaml_obj:
-                raise ValueError(f"Failed to load {QCSUM_CONFIG_YAML}. Ensure it is a valid YAML file.")
-            if self.panel not in yaml_obj:
-                raise ValueError(f"Panel '{self.panel}' not found in {QCSUM_CONFIG_YAML}.")
-            if self.panel == "heme_mpn" or self.panel == "heme_jak2":
-                yaml_dict = yaml_obj.get("heme_comp", {})
-                subpanel_dict = yaml_obj.get(self.panel, {})
-                target_intervals = subpanel_dict.get("target_intervals")
-                bait_intervals = subpanel_dict.get("bait_intervals")
-                if target_intervals and bait_intervals:
-                    yaml_dict["target_intervals"] = target_intervals
-                    yaml_dict["bait_intervals"] = bait_intervals
-            else:
-                yaml_dict = yaml_obj.get(self.panel, {})
-            return {k: str(v) for k, v in yaml_dict.items()}
-
-def parse_arguments():
-    """
-    Parses command line arguments for the bcl-qc pipeline.
-    """
-    parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
-    required_args = parser.add_argument_group('Required arguments')
-    required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
-    parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output", default=FASTQS_DIR_DEFAULT)
-    parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output", default=BAMS_DIR_DEFAULT)
-    parser.add_argument("--sampleinfo", help="Path to the sampleinfo file for determining QC parameters.")
-    parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
-    return parser.parse_args()
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def raise_error(message, e=None):
+    if e:
+        message += f"\nOriginal error: {str(e)}"
+        raise e
+    else:
+        logging.error(message)
+        raise Exception(message)
 
 def exec_command(cmd, executable=None, input_data=None):
     """
@@ -126,8 +90,32 @@ def exec_command(cmd, executable=None, input_data=None):
         error_message = f"Command failed with return code: {e.returncode}\nCommand: {cmd_str}"
         if e.stderr:
             error_message += f"\nStderr: {e.stderr.decode()}" # Decode stderr for readability
-        logging.error(error_message) # Log full error message
-        raise # Re-raise the exception to stop pipeline execution
+        raise_error(error_message, e) # Log full error message and re-raise the original exception
+
+class QCSumInfo:
+    def __init__(self, panel, sample_id):
+        self.panel = SAMPLEINFO_PANEL_TO_QCSUM_PANEL.get(panel, panel)
+        self.sample_id = sample_id
+        self.config = self.get_config()
+
+    def get_config(self):
+        with open(QCSUM_CONFIG) as f:
+            yaml_obj = yaml.safe_load(f)
+            if not yaml_obj:
+                raise_error(f"Failed to load {QCSUM_CONFIG}. Ensure it is a valid YAML file.")
+            if self.panel not in yaml_obj:
+                raise_error(f"Panel '{self.panel}' not found in {QCSUM_CONFIG}.")
+            if self.panel == "heme_mpn" or self.panel == "heme_jak2":
+                yaml_dict = yaml_obj.get("heme_comp", {})
+                subpanel_dict = yaml_obj.get(self.panel, {})
+                target_intervals = subpanel_dict.get("target_intervals")
+                bait_intervals = subpanel_dict.get("bait_intervals")
+                if target_intervals and bait_intervals:
+                    yaml_dict["target_intervals"] = target_intervals
+                    yaml_dict["bait_intervals"] = bait_intervals
+            else:
+                yaml_dict = yaml_obj.get(self.panel, {})
+            return {k: str(v) for k, v in yaml_dict.items()}
 
 def demux(run_dir, samplesheet, fastq_output):
     """
@@ -225,7 +213,7 @@ def multiqc(fastqs_dir, bams_dir):
     multiqc_cmd = [
         "multiqc",
         "--force",
-        "--config", "config/multiqc_config.yaml", # Assuming config file exists at this path
+        "--config", MULTIQC_CONFIG, # Assuming config file exists at this path
         "--outdir", bams_dir,
         bams_dir,
         fastqs_dir,
@@ -260,7 +248,7 @@ def qcsum_command(bam_file, sample, sample_dir, panel):
     ]
 
     if os.path.exists(output_file):
-        logging.info(f"Skipping Picard CollectHsMetrics for {sample} as output file already exists: {output_file}")
+        logging.warning(f"Skipping Picard CollectHsMetrics for {sample} as output file already exists: {output_file}")
     else:
         exec_command(picard_cmd)
         logging.info(f"Picard CollectHsMetrics completed for sample: {sample}, output: {output_file}")
@@ -287,7 +275,7 @@ def qcsum_command(bam_file, sample, sample_dir, panel):
     exec_command(perl_cmd)
     logging.info(f"qcsum_metrics.pl script executed for sample: {sample}, output: {output_file}")
 
-def qcsum(bams_dir, sampleinfo):
+def batch_qcsum(bams_dir, sampleinfo):
     """
     Run qcsum.sh script for QC summary.
 
@@ -318,9 +306,9 @@ def qcsum(bams_dir, sampleinfo):
         outfile.write("\n")
     logging.info(f"qcsum.sh execution completed for directory: {bams_dir}")
 
-def demux_samples(run_dir, fastqs_dir):
+def batch_demux(run_dir, fastqs_dir):
     """
-    Execute the demultiplexing step.
+    Execute the demultiplexing step for each samplesheet in the run directory.
 
     Args:
         run_dir (str): Path to the run directory.
@@ -328,9 +316,8 @@ def demux_samples(run_dir, fastqs_dir):
     """
     logging.info("Starting demux step")
     if os.path.exists(fastqs_dir):
-        error_msg = "Skipping demux as output directory already exists: " + fastqs_dir
-        logging.error(error_msg)
-        raise Exception(error_msg)
+        logging.warning("Skipping demux as output directory already exists: " + fastqs_dir)
+        return
     os.makedirs(fastqs_dir, exist_ok=True)
     samplesheets = get_samplesheets(run_dir)
     for samplesheet in samplesheets:
@@ -338,7 +325,7 @@ def demux_samples(run_dir, fastqs_dir):
         demux(run_dir, samplesheet, fastq_output)
     logging.info("Demux step completed")
 
-def align_samples(fastqs_dir, bams_dir):
+def batch_align(fastqs_dir, bams_dir):
     """
     Execute the alignment step.
 
@@ -358,9 +345,7 @@ def align_samples(fastqs_dir, bams_dir):
             logging.info(f"Skipping alignment for exome samples in: {fastq_list}") # Skip exome samples
             continue
         else:
-            error_msg = "Could not determine bed file for fastq list: " + fastq_list
-            logging.error(error_msg)
-            raise Exception(error_msg)
+            raise_error("Could not determine bed file for fastq list: " + fastq_list)
         for sample_id in get_sample_ids(fastq_list):
             bam_output = os.path.join(bams_dir, sample_id)
             if os.path.exists(bam_output):
@@ -369,7 +354,7 @@ def align_samples(fastqs_dir, bams_dir):
             align(fastq_list, bam_output, sample_id, panel)
     logging.info("Align step completed")
 
-def qc_samples(run_dir, fastqs_dir, bams_dir, sampleinfo):
+def batch_qc(run_dir, fastqs_dir, bams_dir, sampleinfo):
     """
     Execute the QC step, including saving plots, running MultiQC and qcsum.
 
@@ -381,7 +366,7 @@ def qc_samples(run_dir, fastqs_dir, bams_dir, sampleinfo):
     """
     logging.info("Starting qc step")
     save_occ_pf_plot(run_dir, bams_dir)
-    qcsum(bams_dir, sampleinfo)
+    batch_qcsum(bams_dir, sampleinfo)
     multiqc(fastqs_dir, bams_dir)
     logging.info("QC step completed")
 
@@ -413,9 +398,7 @@ def get_samplesheets(run_dir):
     """
     samplesheets = [os.path.join(run_dir, f) for f in os.listdir(run_dir) if "SampleSheet_" in f]
     if not samplesheets:
-        error_msg = "Error: No samplesheets found in " + run_dir
-        logging.error(error_msg)
-        raise Exception(error_msg)
+        raise_error("Error: No samplesheets found in " + run_dir)
     return samplesheets
 
 def get_sample_ids(fastq_list):
@@ -453,8 +436,7 @@ def parse_run_metrics(run_dir):
     try:
         run_metrics.read(run_dir, valid_to_load)
     except Exception as e: # Catch broad exception for interop errors
-        logging.error(f"Error occurred trying to open {run_dir}: {e}")
-        return None
+        raise_error(f"Error occurred trying to open {run_dir}", e)
 
     # Set up data table
     columns = py_interop_table.imaging_column_vector()
@@ -523,28 +505,79 @@ def save_occ_pf_plot(run_dir, output_dir):
         plt.close()
     logging.info(f"Occupied vs Pass Filter plot saved to: {output_dir}")
 
+def parse_arguments():
+    """
+    Parses command line arguments for the bcl-qc pipeline.
+    """
+    parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
+    parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output", default=FASTQS_DIR_DEFAULT)
+    parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output", default=BAMS_DIR_DEFAULT)
+    parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)")
+
+    sample_only_args = parser.add_argument_group("Single sample mode arguments")
+    sample_only_args.add_argument("--single-sample-align-mode", action="store_true", help="Run in single sample mode, aligning a single sample's FASTQs")
+    sample_only_args.add_argument("--fastq1", help="Path to R1 FASTQ file")
+    sample_only_args.add_argument("--fastq2", help="Path to R2 FASTQ file")
+    sample_only_args.add_argument("--fastq-list", help="Path to fastq_list.csv file (if already available)")
+    sample_only_args.add_argument("--sample-id", help="Sample identifier")
+    sample_only_args.add_argument("--panel", help="Panel for alignment parameters (PCP or HEME)", choices=["PCP", "HEME"])
+
+    batch_mode_args = parser.add_argument_group("Batch mode arguments")
+    batch_mode_args.add_argument("--batch-mode", action="store_true", help="Run in batch mode for a full run directory")
+    batch_mode_args.add_argument("--run-dir", help="Directory containing the run data to be processed")
+    batch_mode_args.add_argument("--sampleinfo", help="Path to the sampleinfo file for determining QC parameters.")
+    return parser.parse_args()
+
 def bclqc_run():
     """
     Main function to execute the bcl-qc pipeline.
     """
     args = parse_arguments()
-    steps = args.steps
-    run_dir = args.run_dir
-    sampleinfo = args.sampleinfo
-    run_name = run_dir.split('/')[4]
-    fastqs_dir = args.fastqs_dir + '/' + run_name
-    bams_dir = args.bams_dir + '/' + run_name
+    if args.single_sample_mode:
+        if not (args.fastq1 and args.fastq2 and args.sample_id and args.panel and args.bams_dir):
+            raise_error("In single sample alignment mode, --sample-id, --bams-dir, and --panel as well as either --fastq1 and --fastq2 OR --fastq-list are required.")
+        sample_bams_dir = os.path.join(args.bams_dir, args.sample_id)
+        os.makedirs(sample_bams_dir, exist_ok=True)
+        if args.fastq_list:
+            if not os.path.exists(args.fastq_list):
+                raise_error(f"Provided fastq_list.csv does not exist: {args.fastq_list}")
+            fastq_list_path = args.fastq_list
+        else:
+            if not (os.path.exists(args.fastq1) and os.path.exists(args.fastq2)):
+                raise_error(f"One or both of the provided FASTQ files ({args.fastq1}, {args.fastq2}) do not exist.")
+            fastq_list_path = os.path.join(sample_bams_dir, "fastq_list.csv")
+            with open(fastq_list_path, "w") as f:
+                f.write("RGID,RGSM,RGLB,Lane,Read1File,Read2File\n")
+                f.write(f"{args.sample_id},{args.sample_id},UnknownLibrary,1,{args.fastq1},{args.fastq2}\n")
+        align(fastq_list_path, sample_bams_dir, args.sample_id, args.panel)
+        logging.info(f"Single sample mode run completed for sample {args.sample_id}.")
+        return
+    elif args.batch_mode:
+        if not (args.run_dir and args.sampleinfo):
+            raise_error("In batch mode, --run-dir and --sampleinfo are required.")
+        if not os.path.exists(args.run_dir):
+            raise_error(f"Run directory does not exist: {args.run_dir}")
+        if not os.path.exists(args.sampleinfo):
+            raise_error(f"Sampleinfo file does not exist: {args.sampleinfo}")
+        steps = args.steps if args.steps else DEFAULT_BATCH_STEPS
+        run_dir = args.run_dir
+        sampleinfo = args.sampleinfo
+        run_name = run_dir.split('/')[4]
+        run_fastqs_dir = args.fastqs_dir + '/' + run_name
+        run_bams_dir = args.bams_dir + '/' + run_name
+        if "demux" in steps:
+            batch_demux(run_dir, run_fastqs_dir)
+        if "align" in steps:
+            batch_align(run_fastqs_dir, run_bams_dir)
+        if "qc" in steps:
+            if not sampleinfo:
+                raise_error("Sampleinfo file not found, cannot determine panel for QCSum.")
+            batch_qc(run_dir, run_fastqs_dir, run_bams_dir, sampleinfo)
+        logging.info(f"Batch mode pipeline completed for run {run_name}.")
+        return
+    else:
+        raise_error("Either --single-sample-align-mode or --batch-mode must be specified.")
 
-    if "demux" in steps:
-        demux_samples(run_dir, fastqs_dir)
-    if "align" in steps:
-        align_samples(fastqs_dir, bams_dir)
-    if "qc" in steps:
-        if not sampleinfo:
-            logging.error("Sampleinfo file not found, cannot determine panel for QCSum.")
-        qc_samples(run_dir, fastqs_dir, bams_dir, sampleinfo)
-
-    logging.info("BCL QC pipeline run completed.")
 
 if __name__ == "__main__":
     bclqc_run()
