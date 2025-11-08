@@ -40,6 +40,7 @@ SAMPLEINFO_PANEL_TO_QCSUM_PANEL = {
     "Comprehensive Heme Panel": "heme_comp",
     "MPN Screen Panel (JAK2, CALR, MPL)": "heme_mpn",
     "JAK2": "heme_jak2",
+    "Peripheral Blood Lymphoma Panel": "heme_pblp",
     "Tumor": "pcp_tumor",
     "Normal": "pcp_normal",
 }
@@ -66,14 +67,13 @@ class QCSumInfo:
                 raise ValueError(f"Failed to load {QCSUM_CONFIG_YAML}. Ensure it is a valid YAML file.")
             if self.panel not in yaml_obj:
                 raise ValueError(f"Panel '{self.panel}' not found in {QCSUM_CONFIG_YAML}.")
-            if self.panel == "heme_mpn" or self.panel == "heme_jak2":
+            if self.panel.startswith("heme_") and self.panel != "heme_comp":
                 yaml_dict = yaml_obj.get("heme_comp", {})
                 subpanel_dict = yaml_obj.get(self.panel, {})
+                # override target intervals using subpanel BED
                 target_intervals = subpanel_dict.get("target_intervals")
-                bait_intervals = subpanel_dict.get("bait_intervals")
-                if target_intervals and bait_intervals:
+                if target_intervals:
                     yaml_dict["target_intervals"] = target_intervals
-                    yaml_dict["bait_intervals"] = bait_intervals
             else:
                 yaml_dict = yaml_obj.get(self.panel, {})
             return {k: str(v) for k, v in yaml_dict.items()}
