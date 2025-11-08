@@ -33,7 +33,7 @@ pcp_normal:
 heme_comp:
   bait_intervals: /mnt/pns/tracks/goal_ucla_heme_221_merged_baits.hg38.ilist
   target_intervals: /mnt/pns/tracks/hemev2_roi.interval_list
-  pipeline_version: HemeDx-v2.0
+  pipeline_version: HemeDx-v2.2.0
   platform: NovaSeq6000
   pass_min_align_pct: 99.0
   fail_min_align_pct: 99.0
@@ -47,8 +47,8 @@ heme_comp:
   capture: goal
   capture_version: v1.0
 heme_mpn:
-  bait_intervals: /mnt/pns/tracks/goal_ucla_heme_221_merged_baits.hg38.ilist
   target_intervals: /mnt/pns/tracks/hemev2_subpanel/MPN.cds10bp.interval_list
 heme_jak2:
-  bait_intervals: /mnt/pns/tracks/goal_ucla_heme_221_merged_baits.hg38.ilist
   target_intervals: /mnt/pns/tracks/hemev2_subpanel/JAK2.cds10bp.interval_list
+heme_pblp:
+  target_intervals: /mnt/pns/tracks/hemev2_subpanel/PBLP.cds10bp.interval_list
