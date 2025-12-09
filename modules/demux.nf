@@ -4,7 +4,7 @@ process DEMUX {
     tag "${index}"
     label 'dragen'
 
-    publishDir "${params.fastqs_dir}/${run_dir.name}/${index}", mode: 'copy'
+    publishDir "${params.fastqs_dir}/${run_dir.name}/", mode: 'copy'
 
     input:
     path run_dir
@@ -27,7 +27,7 @@ process DEMUX {
         --bcl-only-matched-reads true \\
         --bcl-input-directory ${run_dir} \\
         --sample-sheet ${samplesheet} \\
-        --output-directory .
+        --output-directory ${index}
 
     echo "[\$(date)] Demux complete"
     """
