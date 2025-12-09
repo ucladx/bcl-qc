@@ -1,0 +1,136 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "https://github.com/ucladx/bcl-qc/nextflow_schema.json",
+    "title": "bcl-qc pipeline parameters",
+    "description": "BCL QC pipeline for NovaSeq runs - demultiplexing, alignment, and QC",
+    "type": "object",
+    "definitions": {
+        "input_output_options": {
+            "title": "Input/output options",
+            "type": "object",
+            "fa_icon": "fas fa-terminal",
+            "description": "Define where the pipeline should find input data and save output data.",
+            "required": ["run_dir"],
+            "properties": {
+                "run_dir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "exists": true,
+                    "description": "Path to Illumina sequencer run output directory.",
+                    "fa_icon": "fas fa-folder-open"
+                },
+                "sampleinfo": {
+                    "type": "string",
+                    "format": "file-path",
+                    "mimetype": "text/tsv",
+                    "description": "Path to sampleinfo TSV file with columns: Samples, Panel/Tumor, BAM Path.",
+                    "fa_icon": "fas fa-file-csv"
+                },
+                "fastqs_dir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "default": "/staging/hot/reads",
+                    "description": "Parent directory where FASTQs will be output.",
+                    "fa_icon": "fas fa-folder"
+                },
+                "bams_dir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "default": "/mnt/pns/bams",
+                    "description": "Parent directory where BAMs/CRAMs will be output.",
+                    "fa_icon": "fas fa-folder"
+                },
+                "outdir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "description": "Output directory for pipeline results. Defaults to bams_dir/run_name.",
+                    "fa_icon": "fas fa-folder-open"
+                }
+            }
+        },
+        "reference_files": {
+            "title": "Reference files",
+            "type": "object",
+            "fa_icon": "fas fa-dna",
+            "description": "Reference genome and interval files.",
+            "properties": {
+                "picard_ref": {
+                    "type": "string",
+                    "format": "file-path",
+                    "default": "/mnt/pns/tracks/ref/hg38.fa",
+                    "description": "Reference FASTA for Picard CollectHsMetrics.",
+                    "fa_icon": "fas fa-file"
+                }
+            }
+        },
+        "panel_options": {
+            "title": "Panel configurations",
+            "type": "object",
+            "fa_icon": "fas fa-vials",
+            "description": "Panel-specific reference and BED file paths.",
+            "properties": {
+                "panels": {
+                    "type": "object",
+                    "description": "Panel configurations with BED and reference paths.",
+                    "default": {
+                        "PCP": {
+                            "bed": "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed",
+                            "human_ref": "/staging/human/reference/hg38_alt_masked_graph_v3"
+                        },
+                        "HEME": {
+                            "bed": "/mnt/pns/tracks/goal_ucla_heme_221_exon_targets.hg38.bed",
+                            "human_ref": "/staging/human/reference/hg38_alt_masked_graph_v3"
+                        }
+                    }
+                }
+            }
+        },
+        "pipeline_control": {
+            "title": "Pipeline control",
+            "type": "object",
+            "fa_icon": "fas fa-cogs",
+            "description": "Control which pipeline steps to run.",
+            "properties": {
+                "skip_demux": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Skip demultiplexing step (use existing FASTQs).",
+                    "fa_icon": "fas fa-fast-forward"
+                },
+                "skip_align": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Skip alignment step (use existing BAMs/CRAMs).",
+                    "fa_icon": "fas fa-fast-forward"
+                },
+                "skip_qc": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Skip QC metrics and MultiQC report generation.",
+                    "fa_icon": "fas fa-fast-forward"
+                }
+            }
+        },
+        "dragen_options": {
+            "title": "Dragen options",
+            "type": "object",
+            "fa_icon": "fas fa-server",
+            "description": "Dragen-specific configuration options.",
+            "properties": {
+                "dragen_staging_dir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "default": "/staging/tmp",
+                    "description": "Dragen intermediate results directory."
+                }
+            }
+        }
+    },
+    "allOf": [
+        { "$ref": "#/definitions/input_output_options" },
+        { "$ref": "#/definitions/reference_files" },
+        { "$ref": "#/definitions/panel_options" },
+        { "$ref": "#/definitions/pipeline_control" },
+        { "$ref": "#/definitions/dragen_options" }
+    ]
+}
