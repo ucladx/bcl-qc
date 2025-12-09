@@ -11,9 +11,9 @@ process DEMUX {
     tuple val(index), val(panel), path(samplesheet)
 
     output:
-    tuple val(index), val(panel), path("fastq_list.csv"), emit: fastq_list
-    path "Reports/*", emit: reports
-    path "*.fastq.gz", emit: fastqs
+    tuple val(index), val(panel), path("${index}/Reports/fastq_list.csv"), emit: fastq_list
+    path "${index}/Reports/*", emit: reports
+    path "${index}/*.fastq.gz", emit: fastqs
 
     when:
     panel != 'UNKNOWN'
