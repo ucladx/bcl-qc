@@ -83,12 +83,19 @@ def parse_arguments():
     Parses command line arguments for the bcl-qc pipeline.
     """
     parser = argparse.ArgumentParser(description="BCL QC pipeline for NovaSeq runs.")
-    required_args = parser.add_argument_group('Required arguments')
-    required_args.add_argument("--run-dir", required=True, help="Directory containing the run data to be processed")
+    parser.add_argument("--bcls-dir", help="Directory containing the BCL run data to be processed")
+    parser.add_argument("--run-name", help="Name of the run (optional, derived from bcls-dir if not provided)")
     parser.add_argument("--fastqs-dir", help="Parent directory where FASTQs will be output", default=FASTQS_DIR_DEFAULT)
     parser.add_argument("--bams-dir", help="Parent directory where BAMs will be output", default=BAMS_DIR_DEFAULT)
     parser.add_argument("--sampleinfo", help="Path to the sampleinfo file for determining QC parameters.")
     parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
+
+    # Arguments for manual alignment of specific FASTQs
+    parser.add_argument("--r1", help="Path to Read 1 FASTQ for manual alignment")
+    parser.add_argument("--r2", help="Path to Read 2 FASTQ for manual alignment")
+    parser.add_argument("--sample-id", help="Sample ID for manual alignment")
+    parser.add_argument("--panel", help="Panel for manual alignment (PCP or HEME)", default="PCP")
+
     return parser.parse_args()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -129,22 +136,22 @@ def exec_command(cmd, executable=None, input_data=None):
         logging.error(error_message) # Log full error message
         raise # Re-raise the exception to stop pipeline execution
 
-def demux(run_dir, samplesheet, fastq_output):
+def demux(bcls_dir, samplesheet, fastq_output):
     """
     Perform demultiplexing on a NovaSeq run using Dragen BCLConvert.
 
     Args:
-        run_dir (str): Path to the folder containing the NovaSeq run data.
+        bcls_dir (str): Path to the folder containing the NovaSeq run data.
         samplesheet (str): Path to the SampleSheet.csv to be used for this demultiplexing.
         fastq_output (str): Path to the folder where the demultiplexed FASTQs will be written.
     """
-    logging.info(f"Starting demultiplexing for run directory: {run_dir}, samplesheet: {samplesheet}, output to: {fastq_output}")
+    logging.info(f"Starting demultiplexing for run directory: {bcls_dir}, samplesheet: {samplesheet}, output to: {fastq_output}")
     demux_cmd = [
         "dragen",
         "--bcl-conversion-only", "true",
         "--bcl-use-hw", "false",
         "--bcl-only-matched-reads", "true",
-        "--bcl-input-directory", run_dir,
+        "--bcl-input-directory", bcls_dir,
         "--sample-sheet", samplesheet,
         "--output-directory", fastq_output
     ]
@@ -318,12 +325,12 @@ def qcsum(bams_dir, sampleinfo):
         outfile.write("\n")
     logging.info(f"qcsum.sh execution completed for directory: {bams_dir}")
 
-def demux_samples(run_dir, fastqs_dir):
+def demux_samples(bcls_dir, fastqs_dir):
     """
     Execute the demultiplexing step.
 
     Args:
-        run_dir (str): Path to the run directory.
+        bcls_dir (str): Path to the run directory.
         fastqs_dir (str): Path to the FASTQ output directory.
     """
     logging.info("Starting demux step")
@@ -332,10 +339,10 @@ def demux_samples(run_dir, fastqs_dir):
         logging.error(error_msg)
         raise Exception(error_msg)
     os.makedirs(fastqs_dir, exist_ok=True)
-    samplesheets = get_samplesheets(run_dir)
+    samplesheets = get_samplesheets(bcls_dir)
     for samplesheet in samplesheets:
         fastq_output = f"{fastqs_dir}/{get_index(samplesheet)}"
-        demux(run_dir, samplesheet, fastq_output)
+        demux(bcls_dir, samplesheet, fastq_output)
     logging.info("Demux step completed")
 
 def align_samples(fastqs_dir, bams_dir):
@@ -369,18 +376,19 @@ def align_samples(fastqs_dir, bams_dir):
             align(fastq_list, bam_output, sample_id, panel)
     logging.info("Align step completed")
 
-def qc_samples(run_dir, fastqs_dir, bams_dir, sampleinfo):
+def qc_samples(bcls_dir, fastqs_dir, bams_dir, sampleinfo):
     """
     Execute the QC step, including saving plots, running MultiQC and qcsum.
 
     Args:
-        run_dir (str): Path to the run directory.
+        bcls_dir (str): Path to the run directory (for InterOp files).
         fastqs_dir (str): Path to the FASTQ directory.
         bams_dir (str): Path to the BAM directory.
         sampleinfo (str): Path to sampleinfo with which to determine which BED/ilists to use for qcsum
     """
     logging.info("Starting qc step")
-    save_occ_pf_plot(run_dir, bams_dir)
+    if bcls_dir:
+        save_occ_pf_plot(bcls_dir, bams_dir)
     qcsum(bams_dir, sampleinfo)
     multiqc(fastqs_dir, bams_dir)
     logging.info("QC step completed")
@@ -398,12 +406,12 @@ def get_index(file_name):
     # Assumes samplesheet format is "SampleSheet_{index}.csv"
     return file_name.split('/')[-1].replace("SampleSheet_", "").replace(".csv", "")
 
-def get_samplesheets(run_dir):
+def get_samplesheets(bcls_dir):
     """
     Get a list of samplesheet filenames in a directory.
 
     Args:
-        run_dir (str): Path to the run directory.
+        bcls_dir (str): Path to the run directory.
 
     Returns:
         list: List of samplesheet filenames.
@@ -411,9 +419,9 @@ def get_samplesheets(run_dir):
     Raises:
         Exception: If no samplesheets are found in the directory.
     """
-    samplesheets = [os.path.join(run_dir, f) for f in os.listdir(run_dir) if "SampleSheet_" in f]
+    samplesheets = [os.path.join(bcls_dir, f) for f in os.listdir(bcls_dir) if "SampleSheet_" in f]
     if not samplesheets:
-        error_msg = "Error: No samplesheets found in " + run_dir
+        error_msg = "Error: No samplesheets found in " + bcls_dir
         logging.error(error_msg)
         raise Exception(error_msg)
     return samplesheets
@@ -431,17 +439,17 @@ def get_sample_ids(fastq_list):
     fastq_list_df = pd.read_csv(fastq_list)
     return set(fastq_list_df['RGSM'])
 
-def parse_run_metrics(run_dir):
+def parse_run_metrics(bcls_dir):
     """
     Parses Illumina Interop run metrics from a run directory.
 
     Args:
-        run_dir (str): Path to the Illumina run directory.
+        bcls_dir (str): Path to the Illumina run directory.
 
     Returns:
         pd.DataFrame or None: DataFrame of interop imaging table if data is found, None otherwise.
     """
-    logging.info(f"Parsing run metrics from: {run_dir}")
+    logging.info(f"Parsing run metrics from: {bcls_dir}")
     # Initialize interop objects
     run_metrics = py_interop_run_metrics.run_metrics()
     valid_to_load = py_interop_run.uchar_vector(py_interop_run.MetricCount, 0)
@@ -451,9 +459,9 @@ def parse_run_metrics(run_dir):
 
     # Read from the run folder
     try:
-        run_metrics.read(run_dir, valid_to_load)
+        run_metrics.read(bcls_dir, valid_to_load)
     except Exception as e: # Catch broad exception for interop errors
-        logging.error(f"Error occurred trying to open {run_dir}: {e}")
+        logging.error(f"Error occurred trying to open {bcls_dir}: {e}")
         return None
 
     # Set up data table
@@ -483,19 +491,19 @@ def parse_run_metrics(run_dir):
         run_metrics, columns, row_offsets, data.ravel()
     )
 
-    logging.info(f"Interop run metrics parsed successfully from: {run_dir}")
+    logging.info(f"Interop run metrics parsed successfully from: {bcls_dir}")
     return pd.DataFrame(data, columns=headers)
 
-def save_occ_pf_plot(run_dir, output_dir):
+def save_occ_pf_plot(bcls_dir, output_dir):
     """
     Saves a % Occupied x % Pass Filter scatter plot to the output directory.
 
     Args:
-        run_dir (str): Path to the Illumina run directory.
+        bcls_dir (str): Path to the Illumina run directory.
         output_dir (str): Path to the output directory to save the plot.
     """
-    logging.info(f"Generating and saving Occupied vs Pass Filter plot for: {run_dir}, output to: {output_dir}")
-    df = parse_run_metrics(run_dir)
+    logging.info(f"Generating and saving Occupied vs Pass Filter plot for: {bcls_dir}, output to: {output_dir}")
+    df = parse_run_metrics(bcls_dir)
     if df is None:
         logging.warning("Unable to parse Interop files, skipping plot generation.")
         return
@@ -523,26 +531,77 @@ def save_occ_pf_plot(run_dir, output_dir):
         plt.close()
     logging.info(f"Occupied vs Pass Filter plot saved to: {output_dir}")
 
+def create_dummy_fastq_list(r1, r2, sample_id, output_dir):
+    """
+    Creates a dummy fastq_list.csv for manual alignment.
+    """
+    csv_path = os.path.join(output_dir, "fastq_list.csv")
+    with open(csv_path, 'w') as f:
+        f.write("RGID,RGSM,RGLB,Lane,Read1File,Read2File\n")
+        # RGID=1, RGSM=sample_id, RGLB=UnknownLibrary, Lane=1 (dummy values)
+        f.write(f"1,{sample_id},UnknownLibrary,1,{r1},{r2}\n")
+    return csv_path
+
 def bclqc_run():
     """
     Main function to execute the bcl-qc pipeline.
     """
     args = parse_arguments()
+
+    # Handle manual alignment
+    if args.r1 and args.r2:
+        if not args.sample_id:
+            logging.error("--sample-id is required for manual alignment with --r1 and --r2")
+            return
+
+        logging.info(f"Starting manual alignment for sample: {args.sample_id}")
+
+        # Determine output structure
+        run_name = args.run_name or "manual_run"
+
+        bams_dir = os.path.join(args.bams_dir, run_name)
+        bam_output = os.path.join(bams_dir, args.sample_id)
+        os.makedirs(bam_output, exist_ok=True)
+
+        fastq_list_path = create_dummy_fastq_list(args.r1, args.r2, args.sample_id, bam_output)
+
+        align(fastq_list_path, bam_output, args.sample_id, args.panel)
+        logging.info(f"Manual alignment completed for {args.sample_id}")
+        return
+
+    # Standard pipeline flow
+    if not args.bcls_dir:
+        logging.error("--bcls-dir is required for standard pipeline execution (unless using --r1/--r2).")
+        return
+
     steps = args.steps
-    run_dir = args.run_dir
+    bcls_dir = args.bcls_dir
     sampleinfo = args.sampleinfo
-    run_name = run_dir.split('/')[4]
-    fastqs_dir = args.fastqs_dir + '/' + run_name
-    bams_dir = args.bams_dir + '/' + run_name
+
+    # Determine run name
+    if args.run_name:
+        run_name = args.run_name
+    else:
+        # Fallback to basename of bcls_dir
+        run_name = os.path.basename(os.path.normpath(bcls_dir))
+
+    # Explicit paths for this run
+    fastqs_dir = os.path.join(args.fastqs_dir, run_name)
+    bams_dir = os.path.join(args.bams_dir, run_name)
+
+    logging.info(f"Pipeline Run: {run_name}")
+    logging.info(f"BCL Directory: {bcls_dir}")
+    logging.info(f"FASTQs Directory: {fastqs_dir}")
+    logging.info(f"BAMs Directory: {bams_dir}")
 
     if "demux" in steps:
-        demux_samples(run_dir, fastqs_dir)
+        demux_samples(bcls_dir, fastqs_dir)
     if "align" in steps:
         align_samples(fastqs_dir, bams_dir)
     if "qc" in steps:
         if not sampleinfo:
             logging.error("Sampleinfo file not found, cannot determine panel for QCSum.")
-        qc_samples(run_dir, fastqs_dir, bams_dir, sampleinfo)
+        qc_samples(bcls_dir, fastqs_dir, bams_dir, sampleinfo)
 
     logging.info("BCL QC pipeline run completed.")
 
