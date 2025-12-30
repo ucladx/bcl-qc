@@ -90,9 +90,8 @@ def parse_arguments():
     parser.add_argument("--sampleinfo", help="Path to the sampleinfo file for determining QC parameters.")
     parser.add_argument("--steps", nargs='+', help="Run only the specified steps (demux, align, qc)", default=DEF_STEPS)
 
-    # Arguments for manual alignment of specific FASTQs
-    parser.add_argument("--r1", help="Path to Read 1 FASTQ for manual alignment")
-    parser.add_argument("--r2", help="Path to Read 2 FASTQ for manual alignment")
+    # Arguments for manual alignment
+    parser.add_argument("--fastq-list", help="Path to fastq_list.csv for manual alignment")
     parser.add_argument("--sample-id", help="Sample ID for manual alignment")
     parser.add_argument("--panel", help="Panel for manual alignment (PCP or HEME)", default="PCP")
 
@@ -531,17 +530,6 @@ def save_occ_pf_plot(bcls_dir, output_dir):
         plt.close()
     logging.info(f"Occupied vs Pass Filter plot saved to: {output_dir}")
 
-def create_dummy_fastq_list(r1, r2, sample_id, output_dir):
-    """
-    Creates a dummy fastq_list.csv for manual alignment.
-    """
-    csv_path = os.path.join(output_dir, "fastq_list.csv")
-    with open(csv_path, 'w') as f:
-        f.write("RGID,RGSM,RGLB,Lane,Read1File,Read2File\n")
-        # RGID=1, RGSM=sample_id, RGLB=UnknownLibrary, Lane=1 (dummy values)
-        f.write(f"1,{sample_id},UnknownLibrary,1,{r1},{r2}\n")
-    return csv_path
-
 def bclqc_run():
     """
     Main function to execute the bcl-qc pipeline.
@@ -549,9 +537,9 @@ def bclqc_run():
     args = parse_arguments()
 
     # Handle manual alignment
-    if args.r1 and args.r2:
+    if args.fastq_list:
         if not args.sample_id:
-            logging.error("--sample-id is required for manual alignment with --r1 and --r2")
+            logging.error("--sample-id is required for manual alignment with --fastq-list")
             return
 
         logging.info(f"Starting manual alignment for sample: {args.sample_id}")
@@ -563,15 +551,13 @@ def bclqc_run():
         bam_output = os.path.join(bams_dir, args.sample_id)
         os.makedirs(bam_output, exist_ok=True)
 
-        fastq_list_path = create_dummy_fastq_list(args.r1, args.r2, args.sample_id, bam_output)
-
-        align(fastq_list_path, bam_output, args.sample_id, args.panel)
+        align(args.fastq_list, bam_output, args.sample_id, args.panel)
         logging.info(f"Manual alignment completed for {args.sample_id}")
         return
 
     # Standard pipeline flow
     if not args.bcls_dir:
-        logging.error("--bcls-dir is required for standard pipeline execution (unless using --r1/--r2).")
+        logging.error("--bcls-dir is required for standard pipeline execution (unless using --fastq-list).")
         return
 
     steps = args.steps
