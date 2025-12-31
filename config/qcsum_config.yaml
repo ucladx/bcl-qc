@@ -24,8 +24,8 @@ pcp_normal:
   covered: 20
   pass_min_roi_pct: 99
   fail_min_roi_pct: 99
-  pass_min_avgcov: 200
-  fail_min_avgcov: 200
+  pass_min_avgcov: 100
+  fail_min_avgcov: 100
   pass_min_reads: 26000000
   fail_min_reads: 26000000
   capture: twist
