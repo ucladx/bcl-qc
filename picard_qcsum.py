@@ -35,7 +35,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 QCSUM_CONFIG_YAML = "/home/iatol/bcl-qc/config/qcsum_config.yaml"
-PICARD_REF = "/home/iatol/hg38.fa"
+PICARD_REF = "/mnt/pns/tracks/ref/hg38.fa"
 
 QC_SUM_HEADER = (
     "Sample,Sequencing_Platform,Pipeline_version,Alignment_QC,Coverage_QC,"
@@ -154,6 +154,7 @@ def parse_hs_metrics(hsm_file: str) -> dict:
         if line.startswith("BAIT_SET"):
             headers = line.strip().split('\t')
             values = lines[i + 1].strip().split('\t')
+            values = [0 if x == '?' else x for x in values]
             return dict(zip(headers, values))
 
     raise ValueError(f"Could not parse metrics from {hsm_file}")
