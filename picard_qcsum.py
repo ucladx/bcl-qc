@@ -27,9 +27,11 @@ Usage:
 """
 
 import sys
+import os
 import argparse
 import subprocess
 import logging
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import yaml
 from pathlib import Path
 
@@ -470,6 +472,8 @@ Examples:
     parser.add_argument("--sample-id", "-s", help="Sample identifier (default: from filename)")
     parser.add_argument("--output-dir", "-o", help="Output directory")
     parser.add_argument("--reference", "-r", default=PICARD_REF, help="Reference FASTA")
+    parser.add_argument("--threads", "-t", type=int, default=None,
+                        help="Max parallel Picard jobs in batch mode (default: min(num_crams, cpu_count))")
     parser.add_argument("--dry-run", "-n", action="store_true", help="Print commands only")
     parser.add_argument("--list-panels", action="store_true", help="List available panels")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
@@ -504,7 +508,7 @@ def main():
             logging.error(str(e))
             return 1
 
-    # Handle batch mode - process multiple CRAMs and merge
+    # Handle batch mode - process multiple CRAMs and merge (in parallel)
     if args.batch:
         if not args.panel:
             print("Error: --panel is required for batch mode")
@@ -513,21 +517,32 @@ def main():
         qcsum_files = []
         failed = []
 
-        for cram_file in args.batch:
-            try:
-                result = run_qcsum(
+        max_workers = args.threads or min(len(args.batch), os.cpu_count() or 1)
+        logging.info(f"Batch mode: processing {len(args.batch)} CRAMs with {max_workers} parallel workers")
+
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            future_to_cram = {
+                executor.submit(
+                    run_qcsum,
                     cram_file=cram_file,
                     panel=args.panel,
                     output_dir=args.output_dir,
                     reference=args.reference,
                     dry_run=args.dry_run,
-                )
-                if not args.dry_run:
-                    qcsum_files.append(result['qcsum_file'])
-                    logging.info(f"Processed: {result['sample_id']} - Align:{result['alignment_qc']} Cov:{result['coverage_qc']}")
-            except Exception as e:
-                logging.error(f"Failed to process {cram_file}: {e}")
-                failed.append(cram_file)
+                ): cram_file
+                for cram_file in args.batch
+            }
+
+            for future in as_completed(future_to_cram):
+                cram_file = future_to_cram[future]
+                try:
+                    result = future.result()
+                    if not args.dry_run:
+                        qcsum_files.append(result['qcsum_file'])
+                        logging.info(f"Processed: {result['sample_id']} - Align:{result['alignment_qc']} Cov:{result['coverage_qc']}")
+                except Exception as e:
+                    logging.error(f"Failed to process {cram_file}: {e}")
+                    failed.append(cram_file)
 
         if args.dry_run:
             return 0
