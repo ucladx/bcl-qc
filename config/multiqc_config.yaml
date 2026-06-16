@@ -1,8 +1,13 @@
 module_order:
+  - custom_content
+  - picard
+  - dragen
   - SAV
   - bclconvert
-  - dragen
-  - custom_content
+  - dragen_fastqc
+  - general_stats
 
-exclude_modules:
-  - snippy
+custom_content:
+  order:
+    - qcsum-module
+    - occ_pf_lane-module

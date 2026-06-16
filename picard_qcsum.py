@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-This script provides a convenient CLI to run the picard/qcsum workflow on
-independent samples (CRAM files) with panel-specific cutoffs.
+This script provides a convenient CLI to run the picard/qcsum workflow
 
 Usage:
   # Run on a PCP tumor sample
