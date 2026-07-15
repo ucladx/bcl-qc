@@ -22,11 +22,11 @@ QCSUM_CONFIG_YAML = "config/qcsum_config.yaml"
 PANEL_CONFIG = {
     "PCP": {
         "BED": "/mnt/pns/tracks/ucla_mdl_cancer_ngs_v1_exon_targets.hg38.bed",
-        "HUMAN_REF": "/staging/human/reference/hg38_alt_masked_graph_v3",
+        "HUMAN_REF": "/staging/human/reference/hg38_alt_masked_graph_v6",
     },
     "HEME": {
         "BED": "/mnt/pns/tracks/goal_ucla_heme_221_exon_targets.hg38.bed",
-        "HUMAN_REF": "/staging/human/reference/hg38_alt_masked_graph_v3",
+        "HUMAN_REF": "/staging/human/reference/hg38_alt_masked_graph_v6",
     }
 }
 
