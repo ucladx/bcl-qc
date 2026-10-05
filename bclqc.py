@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from interop import py_interop_run_metrics, py_interop_run, py_interop_table
 from numpy import zeros, float32
+import glob
 import shlex  # For safely constructing shell commands
 import logging  # For more robust logging
 from multiprocessing import Pool
@@ -219,8 +220,10 @@ def multiqc(fastqs_dir, bams_dir):
         bams_dir (str): Directory containing BAM/CRAM files.
     """
     logging.info(f"Starting MultiQC report generation, FASTQ dir: {fastqs_dir}, BAM dir: {bams_dir}")
-    rm_cmd = ["rm", "-f", f"{bams_dir}/*/*.wgs_*.csv"] # Remove wgs coverage reports since they are irrelevant to targeted panels
-    exec_command(rm_cmd)
+    # Remove wgs coverage reports since they are irrelevant to targeted panels.
+    # Expand the glob in Python: without a shell, rm receives a literal '*' and deletes nothing.
+    for wgs_csv in glob.glob(os.path.join(bams_dir, "*", "*.wgs_*.csv")):
+        os.remove(wgs_csv)
 
     multiqc_cmd = [
         "multiqc",
@@ -531,7 +534,7 @@ def bclqc_run():
     steps = args.steps
     run_dir = args.run_dir
     sampleinfo = args.sampleinfo
-    run_name = run_dir.split('/')[4]
+    run_name = os.path.basename(os.path.normpath(run_dir))
     fastqs_dir = args.fastqs_dir + '/' + run_name
     bams_dir = args.bams_dir + '/' + run_name
 
@@ -542,6 +545,7 @@ def bclqc_run():
     if "qc" in steps:
         if not sampleinfo:
             logging.error("Sampleinfo file not found, cannot determine panel for QCSum.")
+            raise SystemExit("--sampleinfo is required for the qc step")
         qc_samples(run_dir, fastqs_dir, bams_dir, sampleinfo)
 
     logging.info("BCL QC pipeline run completed.")
