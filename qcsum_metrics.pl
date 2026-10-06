@@ -1,173 +1,60 @@
-#!/usr/bin/perl
-# last update: 5-25-2018
+#!/usr/bin/env perl
+use strict;
+use warnings;
 use Getopt::Long;
+use Scalar::Util qw(looks_like_number);
 
-my ($prefix,
-    $qcfolder,
-    $qcsum,
-    $pipeline_version,
-    $platform,
-    $pass_min_align_pct,
-    $fail_min_align_pct,
-    $covered,
-    $pass_min_roi_pct,
-    $fail_min_roi_pct,
-    $pass_min_avgcov,
-    $fail_min_avgcov,
-    $pass_min_reads,
-    $fail_min_reads,
-    $capture,
-    $capture_version,
-  ) = ("") x 16;
-
-GetOptions(
-	"prefix=s" => \$prefix,
-	"qcfolder=s"  => \$qcfolder,
-    "pipeline_version=s" => \$pipeline_version,
-    "platform=s" => \$platform,
-    "pass_min_align_pct=s" =>\$pass_min_align_pct,
-    "fail_min_align_pct=s" =>\$fail_min_align_pct,
-    "covered=s" =>\$covered,
-    "pass_min_roi_pct=s" =>\$pass_min_roi_pct,
-    "fail_min_roi_pct=s" =>\$fail_min_roi_pct,
-    "pass_min_avgcov=s" =>\$pass_min_avgcov,
-    "fail_min_avgcov=s" =>\$fail_min_avgcov,
-    "pass_min_reads=s" =>\$pass_min_reads,
-    "fail_min_reads=s" =>\$fail_min_reads,
-    "capture=s" => \$capture,
-    "capture_version=s" =>\$capture_version,
-          );
-
-# DEFINE ACCEPTABLE CRITERIA FOR DIFFERENT METRICS
-# only define pass and fail thresholds. Anything in between will issue a warning
-
-my $hs = $qcfolder."/".$prefix.".hsm.txt";
-
-# define picard hs metrics variables
-my ($BAIT_SET,
-$TOTAL_READS, 
-$PCT_PF_UQ_READS_ALIGNED, 
-$ON_BAIT_BASES, 
-$NEAR_BAIT_BASES, 
-$PCT_ON_BAIT, 
-$ON_TARGET_BASES, 
-$PCT_SELECTED_BASES, 
-$MEAN_BAIT_COVERAGE, 
-$MEAN_TARGET_COVERAGE, 
-$MEDIAN_TARGET_COVERAGE, 
-$MAX_TARGET_COVERAGE, 
-$MIN_TARGET_COVERAGE, 
-$FOLD_80_BASE_PENALTY, 
-$PCT_TARGET_BASES_1X, 
-$PCT_TARGET_BASES_20X, 
-$PCT_TARGET_BASES_100X,
-$PCT_TARGET_BASES_250X,
-$PCT_TARGET_BASES_500X) = ("") x 19;
-
-# Open picard hs metrics file
-open (DATA, "$hs");
-readline(DATA);
-$x = 0;
-while (<DATA>){
-    $rm = $_;
-    chomp $rm;
-    $x++;
-    my @line = split(/\t/, $rm);
-
-     # Check if we are at the line containing stats yet
-     ## with Picard v2, the column indices have been changed.
-     ## changes have been made accordingly below
-
-    if (($x==7)){
-    	$BAIT_SET = $line[0];
-    	$TOTAL_READS = $line[22];
-    	$PCT_PF_UQ_READS_ALIGNED = $line[32]*100;
-    	$ON_BAIT_BASES = $line[13];
-    	$NEAR_BAIT_BASES = $line[3];
-        $PCT_ON_BAIT = 100-($line[7]*100);
-        $ON_TARGET_BASES = $line[29];
-        $PCT_SELECTED_BASES = $line[6]*100;
-    	$MEAN_BAIT_COVERAGE = $line[9];
-        $MEAN_TARGET_COVERAGE = $line[33];
-        $MEDIAN_TARGET_COVERAGE = $line[34];
-        $MAX_TARGET_COVERAGE =  $line[35];
-        $MIN_TARGET_COVERAGE = $line[36];
-        $FOLD_80_BASE_PENALTY = $line[44];
-        $PCT_TARGET_BASES_1X = $line[45]*100;
-        $PCT_TARGET_BASES_20X = $line[48]*100;
-        $PCT_TARGET_BASES_100X = $line[52]*100;
-		$PCT_TARGET_BASES_250X = $line[53]*100;
-        $PCT_TARGET_BASES_500X = $line[54]*100;
-	}
+my %cfg;
+my @keys = qw(prefix qcfolder pipeline_version platform fail_min_align_pct covered
+              fail_min_roi_pct fail_min_avgcov fail_min_reads capture);
+GetOptions(\%cfg, map { "$_=s" } @keys) or die "Invalid qcsum arguments\n";
+for my $key (@keys) {
+    die "Missing --$key\n" unless defined $cfg{$key} && length $cfg{$key};
 }
-
-# DETERMINE ALIGNMENT QC (PASS, WARN, FAIL)
-my $alignqc = "PASS";
-
-if($PCT_PF_UQ_READS_ALIGNED < $fail_min_align_pct)
-{
-    $alignqc = "FAIL";
+for my $key (qw(fail_min_align_pct covered fail_min_roi_pct fail_min_avgcov fail_min_reads)) {
+    die "Invalid --$key\n" unless looks_like_number($cfg{$key}) && $cfg{$key} !~ /nan|inf/i;
 }
-if($TOTAL_READS < $fail_min_reads)
-{
-    $alignqc = "FAIL";
-}
+die "Unsupported coverage threshold: $cfg{covered}\n" unless $cfg{covered} =~ /^(20|100|250|500)$/;
 
-# DETERMINE COVERAGE QC (PASS, WARN, FAIL)
-my $cov_th = "";
-if ($covered == 20)
-{
-    $cov_th = $PCT_TARGET_BASES_20X;
+# Read the HsMetrics table by column name; comments and column order may vary by Picard version.
+my $input = "$cfg{qcfolder}/$cfg{prefix}.hsm.txt";
+open my $in, '<', $input or die "Cannot read $input: $!\n";
+my %metrics;
+while (my $line = <$in>) {
+    chomp $line;
+    my @header = split /\t/, $line, -1;
+    next unless grep { $_ eq 'TOTAL_READS' } @header;
+    my $values = <$in> // die "Missing metrics row in $input\n";
+    chomp $values;
+    my @values = split /\t/, $values, -1;
+    die "Incomplete metrics row in $input\n" unless @header == @values;
+    @metrics{@header} = @values;
+    last;
 }
-elsif ($covered == 100)
-{
-    $cov_th = $PCT_TARGET_BASES_100X;
+close $in;
+sub metric {
+    my ($name) = @_;
+    my $value = $metrics{$name};
+    die "Missing or invalid $name in $input\n"
+        unless defined $value && looks_like_number($value) && $value !~ /nan|inf/i;
+    return $value;
 }
-elsif ($covered == 250)
-{
-	$cov_th = $PCT_TARGET_BASES_250X;
-}
-elsif ($covered == 500)
-{
-    $cov_th = $PCT_TARGET_BASES_500X;
-}
-
-my $covqc = "PASS";
-if($cov_th < $fail_min_roi_pct)
-{
-    $covqc = "FAIL";
-}
-if($MEAN_TARGET_COVERAGE < $fail_min_avgcov)
-{
-    $covqc = "FAIL";
-}
-# Print prefix (project,sample, etc. whatever is passed to the script as -p)
-print MYFILE "$prefix,";
-# Now we have all data ready to be written in the qc summary file
-my $qcsumfile = $qcfolder."/".$prefix.".qcsum.txt";
-
-#open the qcsum file to write
-open (MYFILE, ">". $qcsumfile);
-
-# Print headers
-print MYFILE "Sample";
-print MYFILE ",Sequencing_Platform,Pipeline_version";
-print MYFILE ",Alignment_QC,Coverage_QC";
-print MYFILE ",Total_Reads,%Reads_Aligned,Capture,Avg_Capture_Coverage";
-print MYFILE ",%On/Near_Bait_Bases,%On_Bait_Bases,FOLD_80_BASE_PENALTY,Avg_ROI_Coverage";
-print MYFILE ",MEDIAN_ROI_COVERAGE,MAX_ROI_COVERAGE";
-print MYFILE ",%ROI_1x,%ROI_20x,%ROI_100x,%ROI_250x,%ROI_500x";
-print MYFILE "\n";
-
-#print sample information
-print MYFILE "$prefix";
-print MYFILE ",$platform,$pipeline_version";
-print MYFILE ",$alignqc,$covqc";
-print MYFILE ",$TOTAL_READS,$PCT_PF_UQ_READS_ALIGNED,$capture,$MEAN_BAIT_COVERAGE";
-print MYFILE ",$PCT_SELECTED_BASES,$PCT_ON_BAIT,$FOLD_80_BASE_PENALTY,$MEAN_TARGET_COVERAGE";
-print MYFILE ",$MEDIAN_TARGET_COVERAGE,$MAX_TARGET_COVERAGE";
-print MYFILE ",$PCT_TARGET_BASES_1X,$PCT_TARGET_BASES_20X,$PCT_TARGET_BASES_100X,$PCT_TARGET_BASES_250X,$PCT_TARGET_BASES_500X";
-print MYFILE "\n";
-
-close MYFILE or warn $! ? "Error closing the qcsum file $!"
-                   : "Exit status $? from the file";
+my $reads = metric('TOTAL_READS');
+my $aligned = metric('PCT_PF_UQ_READS_ALIGNED') * 100;
+my $avg_cov = metric('MEAN_TARGET_COVERAGE');
+my $covered = metric("PCT_TARGET_BASES_$cfg{covered}X") * 100;
+my $align_qc = $aligned < $cfg{fail_min_align_pct} || $reads < $cfg{fail_min_reads} ? 'FAIL' : 'PASS';
+my $cov_qc = $covered < $cfg{fail_min_roi_pct} || $avg_cov < $cfg{fail_min_avgcov} ? 'FAIL' : 'PASS';
+my @header = qw(Sample Sequencing_Platform Pipeline_version Alignment_QC Coverage_QC
+                Total_Reads %Reads_Aligned Capture Avg_Capture_Coverage %On/Near_Bait_Bases
+                %On_Bait_Bases FOLD_80_BASE_PENALTY Avg_ROI_Coverage MEDIAN_ROI_COVERAGE
+                MAX_ROI_COVERAGE %ROI_1x %ROI_20x %ROI_100x %ROI_250x %ROI_500x);
+my @values = ($cfg{prefix}, $cfg{platform}, $cfg{pipeline_version}, $align_qc, $cov_qc,
+              $reads, $aligned, $cfg{capture}, metric('MEAN_BAIT_COVERAGE'),
+              metric('PCT_SELECTED_BASES') * 100, 100 - metric('PCT_OFF_BAIT') * 100,
+              metric('FOLD_80_BASE_PENALTY'), $avg_cov, metric('MEDIAN_TARGET_COVERAGE'),
+              metric('MAX_TARGET_COVERAGE'), map { metric("PCT_TARGET_BASES_${_}X") * 100 } (1, 20, 100, 250, 500));
+my $output = "$cfg{qcfolder}/$cfg{prefix}.qcsum.txt";
+open my $out, '>', $output or die "Cannot write $output: $!\n";
+print $out join(',', @header), "\n", join(',', @values), "\n";
+close $out or die "Cannot close $output: $!\n";

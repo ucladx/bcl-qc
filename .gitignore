@@ -2,7 +2,7 @@
 *.egg-info
 dist/
 build/
-demo_run/*
-!demo_run/SampleSheet*.csv
 reads/
 bams/
+.nextflow*
+work/
