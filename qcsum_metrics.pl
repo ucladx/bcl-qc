@@ -18,7 +18,8 @@ my ($prefix,
     $fail_min_reads,
     $capture,
     $capture_version,
-  ) = ("") x 16;
+    $sample_type,
+  ) = ("") x 17;
 
 GetOptions(
 	"prefix=s" => \$prefix,
@@ -36,6 +37,7 @@ GetOptions(
     "fail_min_reads=s" =>\$fail_min_reads,
     "capture=s" => \$capture,
     "capture_version=s" =>\$capture_version,
+    "sample_type=s" =>\$sample_type,
           );
 
 # DEFINE ACCEPTABLE CRITERIA FOR DIFFERENT METRICS
@@ -150,7 +152,7 @@ my $qcsumfile = $qcfolder."/".$prefix.".qcsum.txt";
 open (MYFILE, ">". $qcsumfile);
 
 # Print headers
-print MYFILE "Sample";
+print MYFILE "Sample,Tumor_Normal";
 print MYFILE ",Sequencing_Platform,Pipeline_version";
 print MYFILE ",Alignment_QC,Coverage_QC";
 print MYFILE ",Total_Reads,%Reads_Aligned,Capture,Avg_Capture_Coverage";
@@ -160,7 +162,7 @@ print MYFILE ",%ROI_1x,%ROI_20x,%ROI_100x,%ROI_250x,%ROI_500x";
 print MYFILE "\n";
 
 #print sample information
-print MYFILE "$prefix";
+print MYFILE "$prefix,$sample_type";
 print MYFILE ",$platform,$pipeline_version";
 print MYFILE ",$alignqc,$covqc";
 print MYFILE ",$TOTAL_READS,$PCT_PF_UQ_READS_ALIGNED,$capture,$MEAN_BAIT_COVERAGE";

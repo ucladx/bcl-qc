@@ -46,7 +46,7 @@ SAMPLEINFO_PANEL_TO_QCSUM_PANEL = {
 }
 
 QC_SUM_HEADER = (
-    "Sample,Sequencing_Platform,Pipeline_version,Alignment_QC,Coverage_QC,"
+    "Sample,Tumor_Normal,Sequencing_Platform,Pipeline_version,Alignment_QC,Coverage_QC,"
     "Total_Reads,%Reads_Aligned,Capture,Avg_Capture_Coverage,%On/Near_Bait_Bases,"
     "%On_Bait_Bases,FOLD_80_BASE_PENALTY,Avg_ROI_Coverage,MEDIAN_ROI_COVERAGE,"
     "MAX_ROI_COVERAGE,%ROI_1x,%ROI_20x,%ROI_100x,%ROI_250x,%ROI_500x"
@@ -281,7 +281,9 @@ def qcsum_command(bam_file, sample, sample_dir, panel):
         "--pass_min_reads", qcsum_info.get("pass_min_reads"),
         "--fail_min_reads", qcsum_info.get("fail_min_reads"),
         "--capture", qcsum_info.get("capture"),
-        "--capture_version", qcsum_info.get("capture_version")
+        "--capture_version", qcsum_info.get("capture_version"),
+        # PCP sampleinfo "Tumor" column holds "Tumor" or "Normal"; left blank for Heme
+        "--sample_type", panel if panel in ("Tumor", "Normal") else "",
     ]
 
     exec_command(perl_cmd)
