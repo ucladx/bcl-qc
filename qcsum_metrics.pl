@@ -84,9 +84,10 @@ while (<DATA>){
     	$BAIT_SET = $line[0];
     	$TOTAL_READS = $line[22];
     	$PCT_PF_UQ_READS_ALIGNED = $line[32]*100;
-    	$ON_BAIT_BASES = $line[13];
-    	$NEAR_BAIT_BASES = $line[3];
-        $PCT_ON_BAIT = 100-($line[7]*100);
+    	$ON_BAIT_BASES = $line[3];
+    	$NEAR_BAIT_BASES = $line[4];
+        # ON_BAIT_BASES / PF_BASES_ALIGNED; 1-PCT_OFF_BAIT would include near-bait bases
+        $PCT_ON_BAIT = $line[27] ? $ON_BAIT_BASES/$line[27]*100 : 0;
         $ON_TARGET_BASES = $line[29];
         $PCT_SELECTED_BASES = $line[6]*100;
     	$MEAN_BAIT_COVERAGE = $line[9];
